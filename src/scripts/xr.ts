@@ -25,6 +25,12 @@ export default class XR {
                 }
             );
 
+            // A restart can dispose the scene while XR support is being detected.
+            if (this.scene.isDisposed) {
+                xr.dispose();
+                return;
+            }
+
             console.log("XR experience created:", xr);
 
             const handTracking =

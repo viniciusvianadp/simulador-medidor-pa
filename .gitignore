@@ -30,3 +30,7 @@ Desktop.ini
 *.swp
 *.swo
 *~
+
+# References
+references/*
+!references/*.md

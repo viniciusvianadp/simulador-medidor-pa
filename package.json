@@ -5,6 +5,8 @@
 	"type": "module",
 	"private": true,
 	"scripts": {
+		"test": "node --test tests/simulation.test.mjs",
+		"simulation:mock": "node scripts/run-simulation-mock.mjs",
 		"start": "vite",
 		"dev": "vite",
 		"build": "vite build",

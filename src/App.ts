@@ -58,11 +58,19 @@ import "@babylonjs/loaders/glTF";
 import { loadScene } from "babylonjs-editor-tools";
 
 import { scriptsMap } from "./scripts";
+import { SimulationController } from "./simulation/SimulationController";
+import type { InteractionEvent, ScenarioConfig, SessionState } from "./simulation/types";
+import { StartMenu } from "./ui/StartMenu";
 
 export class App {
 	private _canvas: HTMLCanvasElement;
 	private _engine: Engine | null = null;
 	private _scene: Scene | null = null;
+	private _simulation: SimulationController | null = null;
+	private _menu: StartMenu | null = null;
+	private _loading = false;
+	private _disposed = false;
+	private _handleResize = (): void => { this._engine?.resize(); };
 
 	public constructor() {
 		const canvasElement = document.getElementById("canvas") as HTMLCanvasElement;
@@ -72,33 +80,72 @@ export class App {
 		this._canvas = canvasElement;
 	}
 
-	public async init(): Promise<void> {
-		this._engine = new Engine(this._canvas, true, {
-			stencil: true,
-			antialias: true,
-			audioEngine: true,
-			adaptToDeviceRatio: true,
-			disableWebGL2Support: false,
-			useHighPrecisionFloats: true,
-			powerPreference: "high-performance",
-			failIfMajorPerformanceCaveat: false,
+	public init(): void {
+		const root = document.getElementById("interface");
+		if (!root) throw new Error("Interface element not found");
+		this._menu = new StartMenu(root, this._canvas, {
+			start: config => this.startSimulation(config),
+			restart: () => this.restartSimulation(),
+			back: () => this.returnToMenu(),
 		});
+		window.addEventListener("resize", this._handleResize);
+	}
 
-		this._scene = new Scene(this._engine);
+	public getSimulationSnapshot(): SessionState | null {
+		return this._simulation?.getSnapshot() ?? null;
+	}
 
-		await this._handleLoad();
+	// Future scene adapters submit validated interactions through this entry point.
+	public dispatchSimulationEvent(event: InteractionEvent) {
+		if (this._loading || !this._simulation) return null;
+		return this._simulation.dispatch(event);
+	}
 
-		// Handle window resize
-		const handleResize = () => {
-			this._engine?.resize();
-		};
+	public async startSimulation(config: ScenarioConfig): Promise<void> {
+		if (this._loading || this._disposed) throw new Error("A sessão não pode ser iniciada agora.");
+		this._loading = true;
+		this._clearSession();
+		try {
+			const simulation = new SimulationController(config);
+			if (!this._engine) {
+				this._engine = new Engine(this._canvas, true, {
+					stencil: true, antialias: true, audioEngine: true,
+					adaptToDeviceRatio: true, disableWebGL2Support: false,
+					useHighPrecisionFloats: true, powerPreference: "high-performance",
+					failIfMajorPerformanceCaveat: false,
+				});
+			}
+			this._scene = new Scene(this._engine);
+			await this._handleLoad();
+			if (this._disposed) throw new Error("A aplicação foi encerrada.");
+			this._simulation = simulation;
+			this._engine.runRenderLoop(() => { this._scene?.render(); });
+			// The menu reveals the canvas after this promise settles.
+			requestAnimationFrame(this._handleResize);
+		} catch (error) {
+			this._clearSession();
+			throw error;
+		} finally {
+			this._loading = false;
+		}
+	}
 
-		window.addEventListener("resize", handleResize);
+	public async restartSimulation(): Promise<void> {
+		const config = this._simulation?.getSnapshot().config;
+		if (!config) throw new Error("Nenhuma sessão ativa para reiniciar.");
+		await this.startSimulation(config);
+	}
 
-		// Start render loop
-		this._engine.runRenderLoop(() => {
-			this._scene?.render();
-		});
+	public returnToMenu(): void {
+		if (this._loading) return;
+		this._clearSession();
+	}
+
+	private _clearSession(): void {
+		this._engine?.stopRenderLoop();
+		this._scene?.dispose();
+		this._scene = null;
+		this._simulation = null;
 	}
 
 	private async _handleLoad(): Promise<void> {
@@ -106,23 +153,28 @@ export class App {
 			return;
 		}
 
+		const scene = this._scene;
 		const havok = await HavokPhysics();
+		if (scene.isDisposed) throw new Error("O carregamento foi interrompido.");
 		const physicsPlugin = new HavokPlugin(true, havok);
 		physicsPlugin.setVelocityLimits(200, 100);
-		this._scene.enablePhysics(new Vector3(0, -9.81, 0), physicsPlugin);
+		scene.enablePhysics(new Vector3(0, -9.81, 0), physicsPlugin);
 
 		SceneLoaderFlags.ForceFullSceneLoadingForIncremental = true;
-		await loadScene("/scene/", "example.babylon", this._scene, scriptsMap, {
+		await loadScene("/scene/", "example.babylon", scene, scriptsMap, {
 			quality: "high",
 		});
 
-		if (this._scene.activeCamera) {
-			this._scene.activeCamera.attachControl();
-		}
+		if (scene.isDisposed) throw new Error("O carregamento foi interrompido.");
+		scene.activeCamera?.attachControl();
 	}
 
 	public dispose(): void {
-		this._scene?.dispose();
+		this._disposed = true;
+		window.removeEventListener("resize", this._handleResize);
+		this._menu?.dispose();
+		this._clearSession();
 		this._engine?.dispose();
+		this._engine = null;
 	}
 }
