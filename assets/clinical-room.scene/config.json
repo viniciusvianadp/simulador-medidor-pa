@@ -1,0 +1,294 @@
+{
+	"clearColor": [
+		0.9490196078431372,
+		0.9490196078431372,
+		0.9137254901960784,
+		1
+	],
+	"ambientColor": [
+		0,
+		0,
+		0
+	],
+	"environment": {
+		"environmentTexture": null,
+		"environmentIntensity": 1,
+		"iblIntensity": 1
+	},
+	"fog": {
+		"fogMode": 0,
+		"fogColor": [
+			1,
+			1,
+			1
+		],
+		"fogStart": 0,
+		"fogEnd": 40,
+		"fogDensity": 0
+	},
+	"physics": {
+		"gravity": [
+			0,
+			-9.81,
+			0
+		]
+	},
+	"rendering": [
+		{
+			"cameraId": "clinical-camera"
+		}
+	],
+	"metadata": {
+		"clinicalRoom": {
+			"version": 1,
+			"units": "meters",
+			"status": "blockout",
+			"anchors": [
+				{
+					"name": "patient",
+					"position": [
+						0,
+						0.95,
+						0.45
+					],
+					"logicalTarget": "patient"
+				},
+				{
+					"name": "patient-arm-esquerdo",
+					"position": [
+						0.275,
+						1.09,
+						0.465
+					],
+					"logicalTarget": "patient-arm",
+					"side": "esquerdo"
+				},
+				{
+					"name": "patient-wrist-esquerdo",
+					"position": [
+						0.36,
+						1.085,
+						0.18
+					],
+					"logicalTarget": "patient-wrist",
+					"side": "esquerdo"
+				},
+				{
+					"name": "patient-cubital-esquerdo",
+					"position": [
+						0.36,
+						1.115,
+						0.425
+					],
+					"logicalTarget": "patient-arm",
+					"side": "esquerdo"
+				},
+				{
+					"name": "patient-arm-direito",
+					"position": [
+						-0.275,
+						1.09,
+						0.465
+					],
+					"logicalTarget": "patient-arm",
+					"side": "direito"
+				},
+				{
+					"name": "patient-wrist-direito",
+					"position": [
+						-0.36,
+						1.085,
+						0.18
+					],
+					"logicalTarget": "patient-wrist",
+					"side": "direito"
+				},
+				{
+					"name": "patient-cubital-direito",
+					"position": [
+						-0.36,
+						1.115,
+						0.425
+					],
+					"logicalTarget": "patient-arm",
+					"side": "direito"
+				},
+				{
+					"name": "hygiene-station",
+					"position": [
+						1.72,
+						1.12,
+						-0.1
+					],
+					"logicalTarget": "hygiene-station"
+				},
+				{
+					"name": "tray",
+					"position": [
+						1.1,
+						0.87,
+						0.65
+					],
+					"logicalTarget": "tray"
+				},
+				{
+					"name": "gauge",
+					"position": [
+						0.78,
+						1.35,
+						0.421
+					],
+					"logicalTarget": "gauge"
+				},
+				{
+					"name": "stethoscope",
+					"position": [
+						0.9800000000000001,
+						0.87,
+						0.625
+					],
+					"logicalTarget": "stethoscope"
+				},
+				{
+					"name": "measuring-tape",
+					"position": [
+						1.2100000000000002,
+						0.87,
+						0.54
+					],
+					"logicalTarget": "measuring-tape"
+				},
+				{
+					"name": "cuffs",
+					"position": [
+						0.9800000000000001,
+						0.5,
+						0.65
+					],
+					"logicalTarget": "cuffs"
+				}
+			],
+			"workPositions": {
+				"esquerdo": [
+					0.95,
+					0,
+					0.15
+				],
+				"direito": [
+					-0.95,
+					0,
+					0.15
+				],
+				"hygiene": [
+					1.38,
+					0,
+					-0.48
+				]
+			}
+		},
+		"scripts": [
+			{
+				"enabled": true,
+				"key": "scripts/xr.ts",
+				"_id": "clinical-room-xr",
+				"debugOnly": false
+			}
+		]
+	},
+	"animations": [],
+	"editorCamera": {
+		"tags": null,
+		"ellipsoid": [
+			0.18,
+			0.5,
+			0.18
+		],
+		"ellipsoidOffset": [
+			0,
+			0,
+			0
+		],
+		"checkCollisions": true,
+		"applyGravity": false,
+		"updateUpVectorFromRotation": false,
+		"rotation": [
+			0.23746418555163643,
+			-0.505290171201829,
+			0
+		],
+		"speed": 0.1,
+		"inertia": 0.4,
+		"mode": 0,
+		"position": [
+			1.6,
+			1.6,
+			-2
+		],
+		"upVector": [
+			0,
+			1,
+			0
+		],
+		"fov": 0.95,
+		"projectionPlaneTilt": 0,
+		"minZ": 0.025,
+		"maxZ": 40,
+		"layerMask": 268435455,
+		"fovMode": 0,
+		"cameraRigMode": 0,
+		"ignoreCameraMaxZ": false,
+		"name": "clinical-camera",
+		"id": "clinical-camera",
+		"state": "",
+		"uniqueId": 186,
+		"type": "EditorCamera",
+		"inputsmgr": {
+			"FreeCameraKeyboardMoveInput": {
+				"tags": null,
+				"keysUp": [
+					87,
+					38
+				],
+				"keysUpward": [],
+				"keysDown": [
+					83,
+					40
+				],
+				"keysDownward": [],
+				"keysLeft": [
+					65,
+					37
+				],
+				"keysRight": [
+					68,
+					39
+				],
+				"rotationSpeed": 0.5,
+				"keysRotateLeft": [],
+				"keysRotateRight": [],
+				"keysRotateUp": [],
+				"keysRotateDown": []
+			},
+			"FreeCameraMouseInput": {
+				"tags": null,
+				"buttons": [
+					0,
+					1,
+					2
+				],
+				"angularSensibility": 2000
+			},
+			"FreeCameraTouchInput": {
+				"tags": null,
+				"touchAngularSensibility": 200000,
+				"touchMoveSensibility": 250
+			}
+		},
+		"animations": [],
+		"ranges": [],
+		"isEnabled": true,
+		"metadata": {
+			"generatedBy": "clinical-room-v1"
+		}
+	}
+}
