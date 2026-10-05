@@ -5,11 +5,15 @@
 		"example/0ba89c0a-1fc1-414a-af14-ffbc7ee3200d.babylonbinarymeshdata",
 		"assets/albedo.png",
 		"assets/amiga.jpg",
-		"assets/country.env",
+		"assets/hospital_room.env",
 		"assets/albedo_256_256.png",
 		"assets/albedo_128_128.png",
 		"assets/amiga_64_64.jpg",
 		"assets/amiga_32_32.jpg",
 		"example.babylon"
+	],
+	"clinical-room.scene": [
+		"assets/hospital_room.env",
+		"clinical-room.babylon"
 	]
 }

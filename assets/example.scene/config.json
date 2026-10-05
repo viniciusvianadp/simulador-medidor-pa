@@ -16,7 +16,7 @@
         "environmentTexture": {
             "tags": null,
             "rotationY": 0,
-            "url": "assets/country.env",
+            "url": "assets/hospital_room.env",
             "boundingBoxPosition": [
                 0,
                 0,
@@ -68,7 +68,7 @@
             "lodGenerationOffset": 0,
             "lodGenerationScale": 0.8,
             "linearSpecularLOD": false,
-            "name": "assets/country.env",
+            "name": "assets/hospital_room.env",
             "hasAlpha": false,
             "getAlphaFromRGB": false,
             "level": 1,

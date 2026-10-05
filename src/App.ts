@@ -33,6 +33,8 @@ import "@babylonjs/core/Materials/Textures/Loaders/envTextureLoader";
 
 import "@babylonjs/core/Physics";
 
+import "@babylonjs/core/Helpers/sceneHelpers";
+
 import "@babylonjs/materials/sky";
 import "@babylonjs/materials/sky/sky.vertex";
 import "@babylonjs/materials/sky/sky.fragment";
@@ -166,6 +168,13 @@ export class App {
 		});
 
 		if (scene.isDisposed) throw new Error("O carregamento foi interrompido.");
+
+		// The .env only provides lighting; show it as the background instead of the procedural sky.
+		if (scene.environmentTexture) {
+			scene.getMeshByName("sky")?.setEnabled(false);
+			scene.createDefaultSkybox(scene.environmentTexture, true, 1000, 0);
+		}
+
 		scene.activeCamera?.attachControl();
 	}
 
