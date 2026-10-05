@@ -14,7 +14,7 @@ writeFileSync(join(output, "package.json"), '{"type":"module"}');
 const load = (file) => import(pathToFileURL(join(output, file)).href);
 const { SimulationController } = await load("SimulationController.js");
 const { defaultConfig, auscultatoryScenario } = await load("auscultatoryScenario.js");
-const { eligibleCuffs } = await load("clinicalParameters.js");
+const { eligibleCuffs, cuffs, clinicalParameters, pdfSource, supportingContent } = await load("clinicalParameters.js");
 const { MockClock, nextMockEvent, runMockScenario } = await load("mockRunner.js");
 const { patientCases } = await load("patientCases.js");
 
@@ -49,7 +49,7 @@ test("ordinary path completes only applicable objectives and leaves cuff removed
 	assert.equal(Object.values(session.steps).filter(step => step.status === "completed").length, 25);
 	assert.equal(session.instruments.cuffPressure, 0);
 	assert.equal(session.instruments.cuffAttached, false);
-	assert.equal(elapsedMs, 315000);
+	assert.equal(elapsedMs, 360000);
 	assert.equal(timeLabel, "Tempo simulado");
 });
 test("persistent sounds branch occurs during deflation and records three values", () => {
@@ -67,7 +67,7 @@ const caseExpectations = {
 	"bruno-large-cuff": { cuff: "large-adult", systolic: 158, diastolic: 94, arm: "direito", zero: undefined },
 	"clara-small-cuff": { cuff: "small-adult", systolic: 96, diastolic: 58, arm: "esquerdo", zero: undefined },
 	"diego-persistent": { cuff: "adult", systolic: 126, diastolic: 72, arm: "direito", zero: 0 },
-	"elisa-overlap": { cuff: "infant", systolic: 110, diastolic: 70, arm: "esquerdo", zero: undefined },
+	"elisa-infant-cuff": { cuff: "infant", systolic: 110, diastolic: 70, arm: "esquerdo", zero: undefined },
 };
 for (const patientCase of patientCases) {
 	test(`${patientCase.id}: completes with its own identity, cuff, pressure, arm and branch`, () => {
@@ -98,13 +98,11 @@ for (const patientCase of patientCases) {
 		});
 	}
 }
-test("overlap patient accepts either table-listed cuff through the controller", () => {
-	for (const cuff of ["infant", "small-adult"]) {
-		const context = setup(patientCases.find(patient => patient.id === "elisa-overlap").config);
-		until(context, "cuff-selected");
-		assert.equal(context.controller.dispatch({ type: "cuff-selected", target: "cuffs", value: cuff }).accepted, true);
-		assert.equal(context.controller.getSnapshot().instruments.selectedCuff, cuff);
-	}
+test("21 cm patient rejects the formerly overlapping small-adult cuff", () => {
+	const context = setup(patientCases.find(patient => patient.id === "elisa-infant-cuff").config);
+	until(context, "cuff-selected");
+	assert.equal(context.controller.dispatch({ type: "cuff-selected", target: "cuffs", value: "small-adult" }).accepted, false);
+	assert.equal(context.controller.dispatch({ type: "cuff-selected", target: "cuffs", value: "infant" }).accepted, true);
 });
 test("restarting a non-default patient preserves its case configuration", () => {
 	const config = patientCases.find(patient => patient.id === "bruno-large-cuff").config;
@@ -138,6 +136,61 @@ test("identity and readiness reject incorrect values without losing partial comp
 	until(context, "exercise-history-checked");
 	assert.equal(context.controller.dispatch({ type: "exercise-history-checked", target: "patient", value: 59 }).accepted, false);
 });
+test("2026 exercise interval rejects the old threshold and accepts 90 minutes", () => {
+	const context = setup();
+	until(context, "exercise-history-checked");
+	for (const value of [60, 89, 89.99]) {
+		assert.equal(context.controller.dispatch({ type: "exercise-history-checked", target: "patient", value }).accepted, false);
+	}
+	assert.equal(context.controller.dispatch({ type: "exercise-history-checked", target: "patient", value: 90 }).accepted, true);
+	until(context, "intake-history-checked");
+	assert.equal(context.controller.dispatch({ type: "intake-history-checked", target: "patient", value: 29 }).accepted, false);
+	assert.equal(context.controller.dispatch({ type: "intake-history-checked", target: "patient", value: 30 }).accepted, true);
+});
+test("both chestpiece choices complete the procedure and reject the old boolean event", () => {
+	for (const value of ["bell", "diaphragm"]) {
+		const context = setup();
+		until(context, "cubital-artery-palpated");
+		assert.equal(context.controller.dispatch({ type: "chestpiece-placed", target: "stethoscope", value }).accepted, false);
+		until(context, "chestpiece-placed");
+		assert.equal(context.controller.dispatch({ type: "bell-placed", target: "stethoscope", value: true }).accepted, false);
+		for (const invalid of [true, "earpieces", ""]) {
+			assert.equal(context.controller.dispatch({ type: "chestpiece-placed", target: "stethoscope", value: invalid }).accepted, false);
+		}
+		assert.equal(context.controller.dispatch({ type: "chestpiece-placed", target: "stethoscope", value }).accepted, true);
+		until(context, "measurement-documented");
+		assert.equal(context.controller.dispatch(nextMockEvent(context.controller, context.clock)).accepted, true);
+		assert.equal(context.controller.getSnapshot().completed, true);
+		assert.equal(context.controller.getSnapshot().observations["place-bell:chestpiece-placed"], value);
+	}
+});
+test("2026 cuff table preserves all seven ranges and bladder dimensions", () => {
+	assert.deepEqual(cuffs.map(({ id, min, max, width, length }) => [id, min, max, width, length]), [
+		["newborn", 0, 6, 3, 6], ["child", 6, 15, 5, 15], ["infant", 16, 21, 8, 21],
+		["small-adult", 22, 26, 10, 24], ["adult", 27, 34, 13, 30],
+		["large-adult", 35, 44, 16, 38], ["thigh", 45, 52, 20, 42],
+	]);
+	for (const [circumference, expected] of [
+		[0, []], [5.9, ["newborn"]], [6, ["newborn", "child"]], [6.1, ["child"]],
+		[15, ["child"]], [15.5, []], [16, ["infant"]], [21, ["infant"]], [21.5, []],
+		[22, ["small-adult"]], [26, ["small-adult"]], [27, ["adult"]], [34, ["adult"]],
+		[35, ["large-adult"]], [44, ["large-adult"]], [44.5, []], [45, ["thigh"]],
+		[52, ["thigh"]], [52.1, []], [Infinity, []],
+	]) assert.deepEqual(eligibleCuffs(circumference), expected, `${circumference} cm`);
+	const config = structuredClone(defaultConfig);
+	config.patient.armCircumferenceCm = 45;
+	assert.equal(runMockScenario(config).session.instruments.selectedCuff, "thigh");
+});
+test("all source references use the revised PDF and supporting data preserve the new notes", () => {
+	assert.equal(pdfSource, "references/checklist PA 2026.pdf");
+	for (const step of auscultatoryScenario) assert.ok(step.source.startsWith(pdfSource));
+	for (const parameter of Object.values(clinicalParameters)) assert.ok(parameter.source.startsWith(pdfSource));
+	assert.equal(clinicalParameters.betweenMeasurements.minMs, 60000);
+	assert.match(supportingContent.firstAssessment, /dois braços/);
+	assert.equal(supportingContent.officeClassification.minimumAgeYears, 18);
+	assert.equal(supportingContent.officeClassification.rows.at(-1).diastolic, "110");
+	assert.match(supportingContent.officeClassification.pendingClarification, /sem sinal/);
+});
 test("quiet rest cannot finish before five minutes", () => {
 	const context = setup();
 	until(context, "quiet-rest-finished");
@@ -147,8 +200,8 @@ test("quiet rest cannot finish before five minutes", () => {
 	context.clock.advance(1);
 	assert.equal(context.controller.dispatch(event).accepted, true);
 });
-test("post-estimation wait enforces both endpoints", () => {
-	for (const [elapsed, expected] of [[14999, false], [15000, true], [30000, true], [30001, false]]) {
+test("post-estimation wait requires one minute without an invented maximum", () => {
+	for (const [elapsed, expected] of [[15000, false], [30000, false], [59999, false], [60000, true], [60001, true], [120000, true]]) {
 		const context = setup();
 		until(context, "estimation-wait-finished");
 		context.clock.advance(elapsed);
@@ -156,7 +209,9 @@ test("post-estimation wait enforces both endpoints", () => {
 	}
 });
 test("cuff policy preserves overlap and does not extrapolate table gaps", () => {
-	assert.deepEqual(eligibleCuffs(21), ["infant", "small-adult"]);
+	assert.deepEqual(eligibleCuffs(6), ["newborn", "child"]);
+	assert.deepEqual(eligibleCuffs(21), ["infant"]);
+	assert.deepEqual(eligibleCuffs(22), ["small-adult"]);
 	assert.deepEqual(eligibleCuffs(26.5), []);
 	assert.deepEqual(eligibleCuffs(NaN), []);
 	const context = setup();

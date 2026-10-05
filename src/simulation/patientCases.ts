@@ -6,6 +6,7 @@ export interface PatientCase {
 	config: ScenarioConfig;
 }
 
+// Single-arm measurement fixtures, not the bilateral first-assessment workflow.
 // Fictional engineering fixtures, not diagnoses or clinically validated case histories.
 // Ana's pressure matches the PDF example; other numbers exercise configurable behavior.
 export const patientCases: PatientCase[] = [
@@ -38,7 +39,7 @@ export const patientCases: PatientCase[] = [
 		},
 	},
 	{
-		id: "elisa-overlap", description: "Circunferência na sobreposição das faixas infantil e adulto pequeno.",
+		id: "elisa-infant-cuff", description: "Circunferência de 21 cm; manguito infantil conforme a Tabela 1 de 2026.",
 		config: {
 			patient: { name: "Elisa Exemplo", dateOfBirth: "2001-06-04", armCircumferenceCm: 21 },
 			pressure: { systolic: 110, diastolic: 70 }, persistentSounds: false, arm: "esquerdo",

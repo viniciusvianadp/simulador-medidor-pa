@@ -86,7 +86,8 @@ export class SimulationController {
 			case "systolic": return value === config.pressure.systolic;
 			case "diastolic": return value === config.pressure.diastolic;
 			case "release-start-timer": return value === 0;
-			case "estimation-wait": return value === true && elapsed >= parameters.estimationWait.minMs && elapsed <= parameters.estimationWait.maxMs;
+			case "estimation-wait": return value === true && elapsed >= parameters.estimationWait.minMs;
+			case "chestpiece": return value === "bell" || value === "diaphragm";
 			case "inflate": return numeric && value === instruments.cuffPressure + parameters.inflation.increment && value <= this._estimate() + parameters.inflation.maxAboveEstimate;
 			case "deflation": return value === parameters.deflation.mmHgPerSecond;
 			case "confirmation": return numeric && config.pressure.diastolic - value >= parameters.confirmation.minDrop && config.pressure.diastolic - value <= parameters.confirmation.maxDrop;

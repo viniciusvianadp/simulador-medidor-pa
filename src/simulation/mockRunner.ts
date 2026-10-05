@@ -36,6 +36,7 @@ export function nextMockEvent(controller: SimulationController, clock: MockClock
 		case "intake": value = parameters.readiness.intakeMinutes; break;
 		case "rest": clock.advance(parameters.rest.milliseconds); value = true; break;
 		case "estimation-wait": clock.advance(parameters.estimationWait.minMs); value = true; break;
+		case "chestpiece": value = "bell"; break;
 		case "circumference": value = config.patient.armCircumferenceCm; break;
 		case "cuff": value = eligibleCuffs(config.patient.armCircumferenceCm)[0]; break;
 		case "offset": value = parameters.cuffOffset.minCm; break;
