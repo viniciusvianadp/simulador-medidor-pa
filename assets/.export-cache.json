@@ -1,9 +1,5 @@
 {
-	"assets/floor.material": "1791221221244.2258",
-	"assets/albedo.png": "1791221221163.681",
-	"assets/cube.material": "1791221221204.2532",
-	"assets/amiga.jpg": "1791221221165.6904",
-	"assets/country.env": "1791221221204.2532",
-	"assets/hospital_room.env": "1791225666279.8826",
-	"assets/clinical-room/manifest.json": "1791226074400.3315"
+	"assets/hospital_room.env": "1791227811599.2952",
+	"assets/editor-generated_693ccecfd380206aa4b520a17c06d41b.png": "1791228409355.3591",
+	"assets/editor-generated_56c2e2628b8524201067cfee833323b1.png": "1791228409185.9624"
 }

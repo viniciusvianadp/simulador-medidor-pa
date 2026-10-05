@@ -2,7 +2,7 @@
     "plugins": [],
     "version": "5.5.2",
     "packageManager": "npm",
-    "lastOpenedScene": "/assets/example.scene",
+    "lastOpenedScene": "/assets/doctors-office.scene",
     "compressedTextureSoftware": "PVRTexTool",
     "compressedTexturesEnabled": false,
     "compressedTexturesEnabledInPreview": false,

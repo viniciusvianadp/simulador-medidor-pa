@@ -2,10 +2,13 @@
 
 This folder contains all the assets used in the project.
 
-`clinical-room.scene/` is the current procedural room blockout. Its generated asset
-inventory is `clinical-room/manifest.json`. Edit the dimensions and palette in
-`src/scene/clinicalRoomSpec.ts`, then run `npm run room:generate` to rebuild the
-Editor scene and runtime export. See the [visual specification](../references/CLINICAL_ROOM_VISUAL_SPEC.md)
-for ownership of generated objects, modeling conventions, and remaining work.
+`doctors-office.scene/` is the main scene. Its environment is
+`Models/doctors_office.glb`, imported through the Editor. The model is authored at
+roughly half real-world size (about 2 × 2 m with a 1.2 m ceiling), so the imported
+root is scaled by about 2.2 to give a ~2.6 m ceiling for XR.
 
-`example.scene/` retains the original pinch-box prototype.
+`hospital_room.env` is the prefiltered environment texture used for image-based
+lighting. `Models/` also holds the clinical props (chair, sphygmomanometer,
+stethoscope, hand sanitizer) to be placed in the scene.
+
+Run `npm run generate` after saving the scene in the Editor to refresh `public/scene/`.

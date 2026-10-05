@@ -1,0 +1,58 @@
+{
+    "tags": null,
+    "position": [
+        0,
+        41,
+        -34
+    ],
+    "rotation": [
+        0,
+        0,
+        0
+    ],
+    "rotationQuaternion": [
+        0,
+        0,
+        0,
+        1
+    ],
+    "scaling": [
+        1,
+        1,
+        1
+    ],
+    "billboardMode": 0,
+    "scalingDeterminant": 1,
+    "infiniteDistance": false,
+    "ignoreNonUniformScaling": false,
+    "reIntegrateRotationIntoRotationQuaternion": false,
+    "name": "Soap",
+    "id": "8b5aec84-5143-4436-9d25-94439ae5b0e3",
+    "state": "",
+    "metadata": {
+        "parentId": 1791228408943
+    },
+    "type": "TransformNode",
+    "uniqueId": 1791228408955,
+    "localMatrix": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+    ],
+    "isEnabled": true,
+    "animations": [],
+    "ranges": []
+}

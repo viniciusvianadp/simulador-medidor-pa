@@ -1,0 +1,58 @@
+{
+    "tags": null,
+    "position": [
+        -100,
+        75,
+        -65
+    ],
+    "rotation": [
+        0,
+        0,
+        0
+    ],
+    "rotationQuaternion": [
+        0,
+        0,
+        0,
+        1
+    ],
+    "scaling": [
+        1,
+        1,
+        1
+    ],
+    "billboardMode": 0,
+    "scalingDeterminant": 1,
+    "infiniteDistance": false,
+    "ignoreNonUniformScaling": false,
+    "reIntegrateRotationIntoRotationQuaternion": false,
+    "name": "Poster",
+    "id": "687fe636-afb7-43ed-965d-1d96ee3d1fbe",
+    "state": "",
+    "metadata": {
+        "parentId": 1791228408943
+    },
+    "type": "TransformNode",
+    "uniqueId": 1791228408953,
+    "localMatrix": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+    ],
+    "isEnabled": true,
+    "animations": [],
+    "ranges": []
+}

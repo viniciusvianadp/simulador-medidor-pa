@@ -1,19 +1,27 @@
 {
-	"example.scene": [
-		"example/fa4be5bf-7e53-4da5-8976-f2f037d975df.babylonbinarymeshdata",
-		"example/d2a60991-6acc-4d76-b3d8-67e1d6662870.babylonbinarymeshdata",
-		"example/0ba89c0a-1fc1-414a-af14-ffbc7ee3200d.babylonbinarymeshdata",
-		"assets/albedo.png",
-		"assets/amiga.jpg",
+	"doctors-office.scene": [
+		"doctors-office/a0a47643-5e9f-405b-ac49-8fdbb4bce410.babylonbinarymeshdata",
+		"doctors-office/bbb31cbd-1154-4180-ad82-241830020049.babylonbinarymeshdata",
+		"doctors-office/98d09946-7e8c-4bfc-99e2-ad16062619f3.babylonbinarymeshdata",
+		"doctors-office/30fe13e6-4fd6-473c-a790-7007aeb11e3a.babylonbinarymeshdata",
+		"doctors-office/a1e485e8-d586-4c9f-b783-fafe43e8715e.babylonbinarymeshdata",
+		"doctors-office/253decfb-bb1f-4ae6-9e21-f2986e3231a0.babylonbinarymeshdata",
+		"doctors-office/d5fd3207-b5fe-4f45-85e7-a40d0c7f3a74.babylonbinarymeshdata",
+		"doctors-office/a62d90bb-002c-4d98-96a8-b869bd3fbc69.babylonbinarymeshdata",
+		"doctors-office/0470861c-fab5-40cc-aa73-4ba0b92db1a6.babylonbinarymeshdata",
+		"doctors-office/12f700bd-5c15-492b-8bd7-5d339e04471e.babylonbinarymeshdata",
+		"doctors-office/24799401-5d99-4764-b2e1-cd1dbf66a9d6.babylonbinarymeshdata",
+		"doctors-office/e7cb1bdb-2219-4a47-ae4f-ab26c4ad362e.babylonbinarymeshdata",
+		"doctors-office/f3a90ea1-947a-4006-ae93-8491623122ac.babylonbinarymeshdata",
+		"doctors-office/58538306-2bc3-4059-b04d-f8a807a5964b.babylonbinarymeshdata",
+		"doctors-office/2f872408-fc20-4318-8b00-1015a2722aff.babylonbinarymeshdata",
+		"assets/editor-generated_693ccecfd380206aa4b520a17c06d41b.png",
 		"assets/hospital_room.env",
-		"assets/albedo_256_256.png",
-		"assets/albedo_128_128.png",
-		"assets/amiga_64_64.jpg",
-		"assets/amiga_32_32.jpg",
-		"example.babylon"
-	],
-	"clinical-room.scene": [
-		"assets/hospital_room.env",
-		"clinical-room.babylon"
+		"assets/editor-generated_56c2e2628b8524201067cfee833323b1.png",
+		"assets/editor-generated_693ccecfd380206aa4b520a17c06d41b_1024_1024.png",
+		"assets/editor-generated_693ccecfd380206aa4b520a17c06d41b_2048_2048.png",
+		"assets/editor-generated_56c2e2628b8524201067cfee833323b1_2048_2048.png",
+		"assets/editor-generated_56c2e2628b8524201067cfee833323b1_1024_1024.png",
+		"doctors-office.babylon"
 	]
 }

@@ -26,11 +26,9 @@ import "babylonjs-editor-tools/loading/script/preload/plugins/gui";
 import "babylonjs-editor-tools/loading/script/preload/plugins/navmesh";
 
 import * as scripts_xr from "./scripts/xr";
-import * as scripts_box from "./scripts/box";
 
 export const scriptsMap = {
-    "scripts/xr.ts": scripts_xr,
-	"scripts/box.ts": scripts_box
+    "scripts/xr.ts": scripts_xr
 };
 
 export {

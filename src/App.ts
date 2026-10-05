@@ -12,6 +12,8 @@ import "@babylonjs/core/Loading/Plugins/babylonFileLoader";
 import "@babylonjs/core/Cameras/camera";
 import "@babylonjs/core/Cameras/universalCamera";
 
+import "@babylonjs/core/Meshes/mesh";
+import "@babylonjs/core/Meshes/transformNode";
 import "@babylonjs/core/Meshes/groundMesh";
 
 import "@babylonjs/core/Lights/directionalLight";
@@ -32,8 +34,6 @@ import "@babylonjs/core/Materials/Textures/cubeTexture";
 import "@babylonjs/core/Materials/Textures/Loaders/envTextureLoader";
 
 import "@babylonjs/core/Physics";
-
-import "@babylonjs/core/Helpers/sceneHelpers";
 
 import "@babylonjs/materials/sky";
 import "@babylonjs/materials/sky/sky.vertex";
@@ -163,19 +163,16 @@ export class App {
 		scene.enablePhysics(new Vector3(0, -9.81, 0), physicsPlugin);
 
 		SceneLoaderFlags.ForceFullSceneLoadingForIncremental = true;
-		await loadScene("/scene/", "example.babylon", scene, scriptsMap, {
+		await loadScene("/scene/", "doctors-office.babylon", scene, scriptsMap, {
 			quality: "high",
 		});
 
 		if (scene.isDisposed) throw new Error("O carregamento foi interrompido.");
 
-		// The .env only provides lighting; show it as the background instead of the procedural sky.
-		if (scene.environmentTexture) {
-			scene.getMeshByName("sky")?.setEnabled(false);
-			scene.createDefaultSkybox(scene.environmentTexture, true, 1000, 0);
-		}
-
-		scene.activeCamera?.attachControl();
+		// The Editor CLI export does not store an active camera id.
+		scene.activeCamera ??= scene.cameras[0] ?? null;
+		if (!scene.activeCamera) throw new Error("A cena não possui câmera.");
+		scene.activeCamera.attachControl();
 	}
 
 	public dispose(): void {

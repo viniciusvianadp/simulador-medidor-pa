@@ -1,0 +1,41 @@
+{
+    "tags": null,
+    "groundColor": [
+        0.35,
+        0.35,
+        0.35
+    ],
+    "direction": [
+        0,
+        1,
+        0
+    ],
+    "range": 1.7976931348623157e+308,
+    "intensityMode": 0,
+    "radius": 0.00001,
+    "diffuse": [
+        1,
+        1,
+        1
+    ],
+    "specular": [
+        0.2,
+        0.2,
+        0.2
+    ],
+    "falloffType": 0,
+    "intensity": 0.7,
+    "_renderPriority": 0,
+    "shadowEnabled": false,
+    "excludeWithLayerMask": 0,
+    "includeOnlyWithLayerMask": 0,
+    "lightmapMode": 0,
+    "name": "ambient",
+    "id": "59c1cf8b-d3b1-4650-90ac-357be9a965d9",
+    "state": "",
+    "metadata": {},
+    "type": 3,
+    "animations": [],
+    "ranges": [],
+    "isEnabled": true
+}

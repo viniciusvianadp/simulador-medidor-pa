@@ -65,7 +65,7 @@ try {
 	await waitFor("!document.querySelector('.session-bar').hidden && !document.querySelector('#restart-button').disabled");
 	assert.equal(await evaluate("testApp.getSimulationSnapshot().config.patient.name"), "Bruno Exemplo");
 	assert.equal(await evaluate("document.activeElement.id"), "session-title");
-	await evaluate("window.originalScene = testApp._scene; window.originalPosition = originalScene.getMeshByName('box').position.clone(); testApp.dispatchSimulationEvent({type:'hand-hygiene-performed', target:'hygiene-station', value:true}); originalScene.getMeshByName('box').position.x += 5");
+	await evaluate("window.originalScene = testApp._scene; window.originalPosition = originalScene.activeCamera.position.clone(); testApp.dispatchSimulationEvent({type:'hand-hygiene-performed', target:'hygiene-station', value:true}); originalScene.activeCamera.position.x += 5");
 	assert.equal(await evaluate("testApp.getSimulationSnapshot().attempts.length"), 1);
 	await evaluate("document.querySelector('#restart-button').click()");
 	await waitFor("!document.querySelector('#restart-button').disabled");
@@ -73,7 +73,7 @@ try {
 	assert.equal(await evaluate("testApp.getSimulationSnapshot().attempts.length"), 0);
 	assert.equal(await evaluate("testApp.getSimulationSnapshot().currentStepId"), "initial-hand-hygiene");
 	assert.equal(await evaluate("originalScene.isDisposed && testApp._scene !== originalScene"), true);
-	assert.equal(await evaluate("testApp._scene.getMeshByName('box').position.equalsWithEpsilon(originalPosition)"), true);
+	assert.equal(await evaluate("testApp._scene.activeCamera.position.equalsWithEpsilon(originalPosition)"), true);
 	assert.deepEqual(await evaluate("testApp.getSimulationSnapshot().instruments"), { cuffPressure: 0, cuffAttached: false, selectedCuff: null });
 	await screenshot("/tmp/projeto-xr-session.png");
 	await evaluate("window.restartedScene = testApp._scene; document.querySelector('#back-button').click()");
@@ -89,7 +89,7 @@ try {
 	await evaluate("document.querySelector('#back-button').click()");
 	// Exercise actual scene-load failure and retry without changing application code.
 	await send("Network.enable");
-	await send("Network.setBlockedURLs", { urls: ["*example.babylon*"] });
+	await send("Network.setBlockedURLs", { urls: ["*doctors-office.babylon*"] });
 	await evaluate("document.querySelector('#start-button').click()");
 	await waitFor("document.querySelector('#menu-status').textContent.includes('Não foi possível') && !document.querySelector('#start-button').disabled");
 	assert.equal(await evaluate("testApp.getSimulationSnapshot()"), null);
