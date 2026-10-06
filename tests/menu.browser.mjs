@@ -42,6 +42,7 @@ async function waitFor(expression) {
 	throw new Error(`Timed out: ${expression}`);
 }
 async function screenshot(path) {
+	await waitFor("!document.querySelector('[id^=babylonjsLoadingDiv]')");
 	const { data } = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: true });
 	writeFileSync(path, Buffer.from(data, "base64"));
 }
@@ -65,7 +66,22 @@ try {
 	await waitFor("!document.querySelector('.session-bar').hidden && !document.querySelector('#restart-button').disabled");
 	assert.equal(await evaluate("testApp.getSimulationSnapshot().config.patient.name"), "Bruno Exemplo");
 	assert.equal(await evaluate("document.activeElement.id"), "session-title");
-	await evaluate("window.originalScene = testApp._scene; window.originalPosition = originalScene.getMeshByName('box').position.clone(); testApp.dispatchSimulationEvent({type:'hand-hygiene-performed', target:'hygiene-station', value:true}); originalScene.getMeshByName('box').position.x += 5");
+	assert.equal(await evaluate("testApp._scene.metadata.clinicalRoom.units"), "meters");
+	assert.equal(await evaluate("!!testApp._scene.getMeshByName('patient-forearm-esquerdo') && !!testApp._scene.getMeshByName('patient-forearm-direito')"), true);
+	assert.ok(await evaluate("testApp._scene.getMeshByName('ground').getTotalVertices() > 0"));
+	assert.equal(await evaluate("testApp._scene.meshes.some(mesh => mesh.name === 'box')"), false);
+	assert.equal(await evaluate("testApp._scene.meshes.filter(mesh => mesh.getTotalVertices() === 0).length"), 0);
+	// Exercise real keyboard navigation, then restore the learner's initial view.
+	await evaluate("window.startCameraPosition = testApp._scene.activeCamera.position.clone(); document.querySelector('#canvas').focus()");
+	await send("Input.dispatchKeyEvent", { type: "keyDown", key: "w", code: "KeyW", windowsVirtualKeyCode: 87 });
+	await waitFor("testApp._scene.activeCamera.position.subtract(startCameraPosition).length() > 0.02");
+	await send("Input.dispatchKeyEvent", { type: "keyUp", key: "w", code: "KeyW", windowsVirtualKeyCode: 87 });
+	assert.equal(await evaluate("testApp._scene.activeCamera.position.y"), 1.6, "Looking down must not make walking change eye height");
+	await evaluate("testApp._scene.activeCamera.cameraDirection.setAll(0); testApp._scene.activeCamera.position.copyFrom(startCameraPosition)");
+	await evaluate("testApp._scene.activeCamera._collideWithWorld(new startCameraPosition.constructor(5, 0, 0))");
+	assert.ok(await evaluate("testApp._scene.activeCamera.position.x > 2 && testApp._scene.activeCamera.position.x < 2.13"), "Camera must stop inside the right wall");
+	await evaluate("testApp._scene.activeCamera.position.copyFrom(startCameraPosition)");
+	await evaluate("window.originalScene = testApp._scene; window.originalPosition = originalScene.getMeshByName('tray').position.clone(); testApp.dispatchSimulationEvent({type:'hand-hygiene-performed', target:'hygiene-station', value:true}); originalScene.getMeshByName('tray').position.x += 5");
 	assert.equal(await evaluate("testApp.getSimulationSnapshot().attempts.length"), 1);
 	await evaluate("document.querySelector('#restart-button').click()");
 	await waitFor("!document.querySelector('#restart-button').disabled");
@@ -73,7 +89,7 @@ try {
 	assert.equal(await evaluate("testApp.getSimulationSnapshot().attempts.length"), 0);
 	assert.equal(await evaluate("testApp.getSimulationSnapshot().currentStepId"), "initial-hand-hygiene");
 	assert.equal(await evaluate("originalScene.isDisposed && testApp._scene !== originalScene"), true);
-	assert.equal(await evaluate("testApp._scene.getMeshByName('box').position.equalsWithEpsilon(originalPosition)"), true);
+	assert.equal(await evaluate("testApp._scene.getMeshByName('tray').position.equalsWithEpsilon(originalPosition)"), true);
 	assert.deepEqual(await evaluate("testApp.getSimulationSnapshot().instruments"), { cuffPressure: 0, cuffAttached: false, selectedCuff: null });
 	await screenshot("/tmp/projeto-xr-session.png");
 	await evaluate("window.restartedScene = testApp._scene; document.querySelector('#back-button').click()");
@@ -89,7 +105,7 @@ try {
 	await evaluate("document.querySelector('#back-button').click()");
 	// Exercise actual scene-load failure and retry without changing application code.
 	await send("Network.enable");
-	await send("Network.setBlockedURLs", { urls: ["*example.babylon*"] });
+	await send("Network.setBlockedURLs", { urls: ["*doctors_office.glb*"] });
 	await evaluate("document.querySelector('#start-button').click()");
 	await waitFor("document.querySelector('#menu-status').textContent.includes('Não foi possível') && !document.querySelector('#start-button').disabled");
 	assert.equal(await evaluate("testApp.getSimulationSnapshot()"), null);
@@ -101,7 +117,7 @@ try {
 	assert.equal(await evaluate("testApp.getSimulationSnapshot().attempts.length"), 0);
 	await evaluate("document.querySelector('#back-button').click()");
 	assert.deepEqual(errors, [], "Uncaught browser exceptions");
-	console.log("PASS: desktop/mobile layout, start, duplicate-click guard, scene/progress reset, patient change, resize, failed loading and retry. Screenshots: /tmp/projeto-xr-menu-{desktop,mobile}.png and /tmp/projeto-xr-session.png");
+	console.log("PASS: desktop/mobile layout, room geometry, walking, wall collision, start, duplicate-click guard, scene/progress reset, patient change, resize, failed loading and retry. Screenshots: /tmp/projeto-xr-menu-{desktop,mobile}.png and /tmp/projeto-xr-session.png");
 } finally {
 	socket.close();
 }

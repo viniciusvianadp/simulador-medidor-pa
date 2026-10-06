@@ -5,6 +5,7 @@
 		"moduleResolution": "bundler",
 		"allowSyntheticDefaultImports": true,
 		"esModuleInterop": true,
+		"skipLibCheck": true,
 		"types": ["vite/client"],
 		"noEmit": true,
 		"isolatedModules": true,

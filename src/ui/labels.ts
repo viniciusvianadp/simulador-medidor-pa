@@ -22,7 +22,7 @@ export const labels = {
 	retry: "Tentar novamente",
 	loadError: "Não foi possível carregar o ambiente. Verifique sua conexão e tente novamente.",
 	session: "Sessão iniciada",
-	sessionHint: "Explore o ambiente. Use o menu para escolher outro paciente.",
+	sessionHint: "Caminhe com W, A, S, D ou setas (clique e arraste para olhar). Teclas 1 a 5 mudam de estação. Em realidade virtual, use o analógico ou teleporte apontando para o chão.",
 	footer: "Aprender. Praticar. Cuidar.",
 	canvas: "Ambiente interativo de simulação",
 	navigation: "Controles da sessão",

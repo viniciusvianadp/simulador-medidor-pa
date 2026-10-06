@@ -11,9 +11,9 @@
 		0
 	],
 	"environment": {
-		"environmentTexture": null,
 		"environmentIntensity": 1,
-		"iblIntensity": 1
+		"iblIntensity": 1,
+		"environmentTexture": null
 	},
 	"fog": {
 		"fogMode": 0,
@@ -216,8 +216,8 @@
 			-0.505290171201829,
 			0
 		],
-		"speed": 0.1,
-		"inertia": 0.4,
+		"speed": 0.45,
+		"inertia": 0.25,
 		"mode": 0,
 		"position": [
 			1.6,

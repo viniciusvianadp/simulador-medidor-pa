@@ -182,7 +182,7 @@ test("2026 cuff table preserves all seven ranges and bladder dimensions", () => 
 	assert.equal(runMockScenario(config).session.instruments.selectedCuff, "thigh");
 });
 test("all source references use the revised PDF and supporting data preserve the new notes", () => {
-	assert.equal(pdfSource, "references/checklist PA 2026.pdf");
+	assert.equal(pdfSource, "references/checklist_v2.pdf");
 	for (const step of auscultatoryScenario) assert.ok(step.source.startsWith(pdfSource));
 	for (const parameter of Object.values(clinicalParameters)) assert.ok(parameter.source.startsWith(pdfSource));
 	assert.equal(clinicalParameters.betweenMeasurements.minMs, 60000);

@@ -1,6 +1,6 @@
 # Scenario engine (implementation plan, step 1)
 
-This framework-free TypeScript module represents all 26 checklist entries from `references/checklist PA 2026.pdf` (revision 04/03/2026) for a single-arm measurement. It does not yet orchestrate the new bilateral first-assessment requirement. It does not yet connect to the scene or change the existing XR prototype.
+This framework-free TypeScript module represents all 26 checklist entries from `references/checklist_v2.pdf`, revision 04/03/2026) for a single-arm measurement. It does not yet orchestrate the new bilateral first-assessment requirement. It does not yet connect to the scene or change the existing XR prototype.
 
 ## Run
 

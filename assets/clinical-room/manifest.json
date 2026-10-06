@@ -416,7 +416,7 @@
 			],
 			"status": "planned",
 			"method": "procedural",
-			"source": "references/checklist PA 2026.pdf, Tabela 1; dimensions apply to inflatable bladder, not outer sleeve."
+			"source": "references/checklist_v2.pdf, Tabela 1; dimensions apply to inflatable bladder, not outer sleeve."
 		},
 		{
 			"id": "cuff-child",
@@ -435,7 +435,7 @@
 			],
 			"status": "planned",
 			"method": "procedural",
-			"source": "references/checklist PA 2026.pdf, Tabela 1; dimensions apply to inflatable bladder, not outer sleeve."
+			"source": "references/checklist_v2.pdf, Tabela 1; dimensions apply to inflatable bladder, not outer sleeve."
 		},
 		{
 			"id": "cuff-infant",
@@ -454,7 +454,7 @@
 			],
 			"status": "planned",
 			"method": "procedural",
-			"source": "references/checklist PA 2026.pdf, Tabela 1; dimensions apply to inflatable bladder, not outer sleeve."
+			"source": "references/checklist_v2.pdf, Tabela 1; dimensions apply to inflatable bladder, not outer sleeve."
 		},
 		{
 			"id": "cuff-small-adult",
@@ -473,7 +473,7 @@
 			],
 			"status": "planned",
 			"method": "procedural",
-			"source": "references/checklist PA 2026.pdf, Tabela 1; dimensions apply to inflatable bladder, not outer sleeve."
+			"source": "references/checklist_v2.pdf, Tabela 1; dimensions apply to inflatable bladder, not outer sleeve."
 		},
 		{
 			"id": "cuff-adult",
@@ -492,7 +492,7 @@
 			],
 			"status": "planned",
 			"method": "procedural",
-			"source": "references/checklist PA 2026.pdf, Tabela 1; dimensions apply to inflatable bladder, not outer sleeve."
+			"source": "references/checklist_v2.pdf, Tabela 1; dimensions apply to inflatable bladder, not outer sleeve."
 		},
 		{
 			"id": "cuff-large-adult",
@@ -511,7 +511,7 @@
 			],
 			"status": "planned",
 			"method": "procedural",
-			"source": "references/checklist PA 2026.pdf, Tabela 1; dimensions apply to inflatable bladder, not outer sleeve."
+			"source": "references/checklist_v2.pdf, Tabela 1; dimensions apply to inflatable bladder, not outer sleeve."
 		},
 		{
 			"id": "cuff-thigh",
@@ -530,7 +530,7 @@
 			],
 			"status": "planned",
 			"method": "procedural",
-			"source": "references/checklist PA 2026.pdf, Tabela 1; dimensions apply to inflatable bladder, not outer sleeve."
+			"source": "references/checklist_v2.pdf, Tabela 1; dimensions apply to inflatable bladder, not outer sleeve."
 		},
 		{
 			"id": "cuffs",

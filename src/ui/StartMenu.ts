@@ -6,6 +6,7 @@ export interface MenuActions {
 	start(config: ScenarioConfig): Promise<void>;
 	restart(): Promise<void>;
 	back(): void;
+	moveToStation?(station: "overview" | "hygiene" | "prontuario" | "mesa" | "cadeira" | "esquerdo" | "direito"): void;
 }
 
 export class StartMenu {
@@ -67,6 +68,30 @@ export class StartMenu {
 			this._showSession(false);
 			this._element("#menu-status").textContent = "";
 			this._element("#start-button").focus();
+		}, options);
+		canvas.addEventListener("pointerdown", () => {
+			if (this._sessionActive) canvas.focus();
+		}, options);
+		window.addEventListener("keydown", event => {
+			if (!this._sessionActive) return;
+			const target = document.activeElement;
+			if (target?.tagName === "INPUT" || target?.tagName === "SELECT" || target?.tagName === "TEXTAREA") return;
+			const key = event.key.toLowerCase();
+			if (key === "w" || key === "a" || key === "s" || key === "d" || key.startsWith("arrow")) {
+				if (document.activeElement !== canvas) {
+					canvas.focus();
+				}
+			} else if (key === "1") {
+				this._actions.moveToStation?.("overview");
+			} else if (key === "2") {
+				this._actions.moveToStation?.("hygiene");
+			} else if (key === "3") {
+				this._actions.moveToStation?.("prontuario");
+			} else if (key === "4") {
+				this._actions.moveToStation?.("mesa");
+			} else if (key === "5") {
+				this._actions.moveToStation?.("cadeira");
+			}
 		}, options);
 		canvas.setAttribute("aria-label", labels.canvas);
 		this._showSession(false);

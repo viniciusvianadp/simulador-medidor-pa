@@ -1,5 +1,5 @@
 // Transcribed from the supplied PDF, not independently clinically validated.
-export const pdfSource = "references/checklist PA 2026.pdf";
+export const pdfSource = "references/checklist_v2.pdf";
 export const pdfRevision = "2026-03-04";
 export const clinicalParameters = {
 	readiness: { exerciseMinutes: 90, intakeMinutes: 30, source: `${pdfSource}, item 6` },

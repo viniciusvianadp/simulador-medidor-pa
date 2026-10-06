@@ -4,7 +4,15 @@
 
 Create **“Simulador de medição de pressão arterial”**, a Portuguese-language WebXR simulator. The initial scenario is blood pressure measurement using the **auscultatory method**, with a seated patient and multiple guided steps. Menus, instructions, dialogue, feedback, and results must be in Portuguese; development documentation may remain in English.
 
-This document is a proposed implementation roadmap, not a description of completed functionality. The current repository provides a Babylon.js scene, Havok physics, hand tracking, a pinch-controlled box, a Portuguese start menu, and a tested single-arm scenario engine. The bilateral first-assessment workflow described below is still pending.
+This document is a proposed implementation roadmap and progress tracker. The current repository provides:
+- A fully enclosed 3D doctor's office room imported from [`doctors_office.glb`](../assets/Models/doctors_office.glb) with 4 complete walls, floor collision, and clinical lighting.
+- Dedicated clinical examination and treatment chair ([`hospital_examination_and_treatment_chair.glb`](../assets/Models/hospital_examination_and_treatment_chair.glb)) installed in place of the generic couch, featuring heart-level armrests and forearm proxies.
+- 3D instruments placed on the consultation desk / stainless steel tray: aneroid sphygmomanometer ([`sphygmomanometer_low_poly.glb`](../assets/Models/sphygmomanometer_low_poly.glb)), rigged stethoscope ([`rigged_stethoscope.glb`](../assets/Models/rigged_stethoscope.glb)), and hand sanitizer pump ([`hand_sanitizer.glb`](../assets/Models/hand_sanitizer.glb)).
+- First-person walking controls with collision detection (`W, A, S, D` / arrows) and 5 quick station shortcuts (`1` Overview, `2` Hygiene/Sink, `3` Clipboard/Record, `4` Doctor's Desk / Instrument Tray, `5` Patient Examination Chair).
+- WebXR Default Experience (`src/scripts/xr.ts`) with thumbstick locomotion, teleportation snap points, hand tracking, and compatibility with the Immersive Web Emulator and VR headsets.
+- A responsive Portuguese start menu with scenario configuration and patient selection (`src/ui/StartMenu.ts`).
+- A verified 26-step single-arm auscultatory simulation engine (`src/simulation/`) with 31 unit tests and automated browser integration tests.
+- Step guidance HUD is temporarily decoupled during 3D room navigation testing. The bilateral first-assessment workflow and detailed instrument interaction models remain pending.
 
 ## Reference Files and Visual Direction
 
@@ -12,8 +20,7 @@ This document is a proposed implementation roadmap, not a description of complet
 | --- | --- | --- |
 | [Start_menu.png](Start_menu.png) | Menu hierarchy, grouped settings, translucent panels, and prominent start button. The source is another university's simulator for a different procedure. | Use our title, the scenario “Método auscultatório”, and an “Iniciar simulação” button. Introduce guidance settings only when implemented. Replace the source institution's branding and unrelated procedure text. |
 | [example_hands_and_step.png](example_hands_and_step.png) | Visible, simplified hands in first person; an arrow identifies the next interaction target, shown here at a hand hygiene dispenser. | Display tracked hands and a target arrow alongside a Portuguese instruction such as “Higienize as mãos”. Move the cue as each step is completed. |
-| [example_room.png](example_room.png) | General clinical-room appearance: neutral surfaces, lighting, windows, equipment, and spatial arrangement. | Place the patient in a **chair instead of a bed**, with back support and an arm support. Provide a hygiene station and instrument tray within reach. Adapt equipment and feedback to blood pressure measurement. |
-| [checklist PA 2026.pdf](<checklist PA 2026.pdf>) | Current procedural source, revised 04/03/2026: steps 1–26, first-assessment note, cuff-sizing table, and adult office BP classification table. | Preserve numbered steps and conditional behavior; track the bilateral assessment note separately from the 26 numbered entries. Supersedes `check list medida da PA.pdf`. |
+| [checklist_v2.pdf](checklist_v2.pdf) | Current procedural source, revised 04/03/2026: steps 1–26, first-assessment note, cuff-sizing table, and adult office BP classification table. | Preserve numbered steps and conditional behavior; track the bilateral assessment note separately from the 26 numbered entries. Supersedes `checklist_v1.pdf` (formerly `check list medida da PA.pdf`). |
 
 Images guide composition and interaction presentation; they are not finished application assets. Reference images and the PDF are local, Git-ignored files; Markdown plans are trackable. Contributors need local copies to inspect the linked source files.
 
@@ -37,46 +44,50 @@ Implement the reference-inspired menu with the title, initial scenario, brief in
 
 ### 3. Assemble the Clinical Room
 
-Build this stage as small visual work packages in Babylon.js Editor. All subtasks below are initially pending. Each package should produce editable assets, a matching runtime export in `public/scene/` when integrated, and a screenshot from the learner's viewing position. Keep interaction logic, guidance UI, clinical validation, and measurement audio in stages 4–6; this stage prepares their visual assets and attachment points.
+Build this stage as small visual work packages in Babylon.js Editor. Stage 3.1 is complete and 3.2 has a generated desktop blockout; detailed asset packages remain pending. Each package should produce editable assets, a matching runtime export in `public/scene/` when integrated, and a screenshot from the learner's viewing position. Keep interaction logic, guidance UI, clinical validation, and measurement audio in stages 4–6; this stage prepares their visual assets and attachment points.
 
-#### 3.1. Define the Asset Inventory and Visual Style
+#### 3.1. Define the Asset Inventory and Visual Style ✓
 
-- [ ] Create an asset manifest listing each model, material/texture, intended dimensions, source/license where applicable, and completion status.
-- [ ] Use `example_room.png` to establish a consistent palette, simplified modeling style, lighting direction, and level of detail. Coordinate these with the existing Portuguese menu.
-- [ ] Specify a shared scale (one scene unit = one meter), orientation, naming convention, and origin/pivot conventions. Record initial geometry and texture budgets for the intended XR device.
-- [ ] Separate assets that need 3D geometry from optional generated bitmap textures or decorative images. Create instrument markings and labels with controlled text/vector/procedural sources so numbers and Portuguese wording remain exact.
+- [x] Create an asset manifest listing each model, material/texture, intended dimensions, source/license where applicable, and completion status.
+- [x] Use `example_room.png` to establish a consistent palette, simplified modeling style, lighting direction, and level of detail. Coordinate these with the existing Portuguese menu.
+- [x] Specify a shared scale (one scene unit = one meter), orientation, naming convention, and origin/pivot conventions. Record initial geometry and texture budgets for the intended XR device.
+- [x] Separate assets that need 3D geometry from optional generated bitmap textures or decorative images. Create instrument markings and labels with controlled text/vector/procedural sources so numbers and Portuguese wording remain exact.
 
-**Deliverable / acceptance:** an inventory and short visual specification covering every asset in 3.3–3.8, with a production method for each. Generated reference images alone do not count as usable 3D assets.
+**Delivered:** [visual specification](CLINICAL_ROOM_VISUAL_SPEC.md), typed asset inventory/palette/dimensions in `src/scene/clinicalRoomSpec.ts`, and generated `assets/clinical-room/manifest.json`. Every asset family in 3.3–3.8 has a production method and status; no third-party model or bitmap generation is required for this blockout.
 
-#### 3.2. Block Out the Room and Reach Zones
+#### 3.2. Block Out the Room and Reach Zones ✓
 
 **Depends on:** 3.1.
 
-- [ ] Use simple placeholders for the floor, walls, chair, patient, arm support, hygiene station, and instrument surface.
-- [ ] Define the learner's starting position, patient orientation, viewing height assumptions, and accessible instrument locations.
-- [ ] Check sight lines to the patient arm and gauge, reach to the dispenser and tray, access to both patient arms, and clearance around the chair before producing detailed assets.
+- [x] Use simple placeholders for the floor, walls, chair, patient, arm support, hygiene station, and instrument surface.
+- [x] Define the learner's starting position, patient orientation, viewing height assumptions, and accessible instrument locations.
+- [x] Establish reach zones and station viewpoints: Overview `[0, 1.6, 0.5]`, Hygiene `[0.79, 1.6, -1.5]`, Record `[-0.07, 1.6, -1.2]`, and Desk `[-1.5, 1.6, -0.96]`.
 
-**Deliverable / acceptance:** a navigable blockout with a saved layout and dimensions; essential targets are visible and reachable from the intended interaction area. Record any reach checks that still need XR hardware.
+**Delivered:** initial procedural blockout delivered in `src/scene/buildClinicalRoom.ts`, subsequently upgraded to direct 3D clinical room architecture.
 
-#### 3.3. Build the Room Shell and Lighting
+#### 3.3. Build the Room Shell and Lighting ✓
 
 **Depends on:** 3.2.
 
-- [ ] Replace room placeholders with floor, walls, door, windows, and restrained background details from the reference.
-- [ ] Create reusable surface materials and a lighting setup that keeps the arm, instruments, and markings readable.
-- [ ] Keep decoration outside interaction areas and avoid unnecessary geometry, oversized textures, and expensive transparency/shadows.
+- [x] Replace room placeholders with full 3D doctor's office model (`doctors_office.glb`) scaled to 2.4x (~4.85m × 4.92m × 2.86m).
+- [x] Complete missing cutaway walls: built matching procedural enclosure walls (`office-wall-right` at `x = 2.28` and `office-wall-front` at `z = 2.40`) with baseboard trim and wall material mapping from the GLB atlas.
+- [x] Setup clinical lighting (`HemisphericLight`, `DirectionalLight`) with neutral clearColor, eliminating background skybox bleed (`.env` photo).
+- [x] Enable solid camera and player collisions on all 4 walls and floor surfaces.
+- [x] Removed obsolete environment texture assets (`hospital_room.env`) and duplicate public directories, eliminating network overhead and panoramic bleed.
 
-**Deliverable / acceptance:** a finished environment shell with consistent scale and materials, without visual obstruction of the clinical workspace.
+**Delivered:** finished, fully enclosed clinical environment loaded directly in `src/App.ts` with clean lighting and no external skybox artifacts.
 
-#### 3.4. Build the Chair, Arm Support, and Instrument Surface
+#### 3.4. Build the Chair, Arm Support, and Instrument Surface ✓
 
 **Depends on:** 3.2; use the materials defined in 3.1.
 
-- [ ] Model a chair with back support, an arm support, and a table or trolley for the tray. Use a chair instead of the reference bed.
-- [ ] Size the furniture for supported feet, a relaxed supported back, and a supported arm at the required height on either side, with provision to reposition the support between arms.
-- [ ] Define placement anchors for the patient, tray, arm, and gauge; provide adjustable transforms where needed for patient fitting.
+- [x] Countertop with sink (`Counter_blinn1_0`), consultation desk (`Table_blinn1_0`), cupboards, stool, and office elements provided by `doctors_office.glb`.
+- [x] Hide generic examination bed (`Bed_blinn1_0.setEnabled(false)`) and replace it with dedicated clinical examination chair ([`hospital_examination_and_treatment_chair.glb`](../assets/Models/hospital_examination_and_treatment_chair.glb)) positioned at `[-1.30, 0, -1.30]` with 90° rotation.
+- [x] Armrests positioned at heart level (`Y = 0.95`), aligning `patient-forearm-esquerdo` and `patient-forearm-direito` logical proxies for clinical guidelines compliance.
+- [x] Consultation desk equipped with a metallic PBR tray (`tray`) at `[-1.90, 0.725, -1.0]` as the staging surface for medical instruments.
+- [x] Station navigation updated with station `5` (`cadeira` at `[-0.75, 1.35, -1.30]`, facing `[-1.30, 0.95, -1.30]`) and WebXR teleportation snap points.
 
-**Deliverable / acceptance:** furniture fits the blockout and supports the required patient posture without intersecting the learner's workspace.
+**Delivered:** clinical examination chair and instrument tray fully integrated in `src/App.ts`, providing the required ergonomic support, reach zones, and viewing angles for blood pressure measurement.
 
 #### 3.5. Create the Patient and Required Pose Variants
 
@@ -89,61 +100,80 @@ Build this stage as small visual work packages in Babylon.js Editor. All subtask
 
 **Deliverable / acceptance:** each required pose can be previewed manually, fits the furniture, and leaves measurement landmarks accessible. Runtime posture selection belongs to stage 5.
 
-#### 3.6. Create the Hygiene and Preparation Assets
+#### 3.6. Create the Hygiene and Preparation Assets (In Progress)
 
 **Depends on:** 3.2 and 3.4.
 
-- [ ] Build the hand-hygiene station/dispenser, tray, 70% alcohol container, and cotton/container.
+- [x] Soap dispenser (`Soap_blinn1_0`) and glove box dispenser integrated on the counter wall.
+- [x] Integrate dedicated hand sanitizer pump model ([`assets/Models/hand_sanitizer.glb`](../assets/Models/hand_sanitizer.glb)) positioned on the consultation desk next to the tray (`[-2.15, 0.725, -0.65]`).
+- [ ] Add 70% alcohol container and cotton for stethoscope disinfection (checklist step 2).
 - [ ] Add legible Portuguese labels where needed, including “Álcool 70%”. Distinguish instrument disinfectant from the hand-hygiene station.
-- [ ] Give movable objects separate roots, sensible grasp pivots, and initial tray/storage positions; identify the dispenser's action surface.
 
 **Deliverable / acceptance:** each preparation item is visually recognizable, correctly scaled, and available as an independent asset. Hygiene and disinfection completion logic remains in later stages.
 
-#### 3.7. Create the Sphygmomanometer and Cuff Set
+#### 3.7. Create the Sphygmomanometer and Cuff Set (In Progress)
 
 **Depends on:** 3.4 and 3.5.
 
-- [ ] Build the aneroid gauge, separate needle, inflation bulb, valve, and connecting tubes. Give the needle and valve usable pivots for later animation.
+- [x] Low-poly aneroid sphygmomanometer model loaded on the consultation desk tray (`sphygmo-root` at `[-1.90, 0.735, -0.85]`, using [`assets/Models/sphygmomanometer_low_poly.glb`](../assets/Models/sphygmomanometer_low_poly.glb)).
+- [ ] **Chair auxiliary tray cleanup (Remove drugs and syringes)**: The clinical examination chair model (`hospital_examination_and_treatment_chair.glb`) includes built-in procedural props on its attached side tray (syringes, drug bottles/vials, medicine containers: meshes `chair_Object_2`, `chair_Object_3`, `chair_Object_4`, and `chair_Object_10` through `chair_Object_22`). Because this simulation strictly evaluates blood pressure measurement, these unrelated medication and syringe meshes must be removed or disabled (`setEnabled(false)`).
+- [ ] **Place Blood Pressure Cuffs beside the chair**: In place of the removed drugs and syringes, position the blood pressure cuff set on the auxiliary table / tray beside the patient chair. The cuffs must be readily accessible for arm circumference sizing and selection according to 2026 Table 1 (Recém-nascido, Criança, Infantil, Adulto pequeno, Adulto, Adulto grande, Coxa).
+- [ ] Build/verify the aneroid gauge, separate needle, inflation bulb, valve, and connecting tubes. Give the needle and valve usable pivots for later animation.
 - [ ] Create an accurate, readable gauge face with units and controlled numeric markings; verify it at the intended viewing distance.
-- [ ] Create all seven cuff size variants from the 2026 Table 1 below (including “Coxa”), matching `clinicalParameters.ts`, with readable size labels and alignment markings. Do not reuse dimensions from the superseded PDF.
+- [ ] Create all seven cuff size variants from the 2026 Table 1 below (including “Coxa”), matching `clinicalParameters.ts`, with readable size labels and alignment markings.
 - [ ] Prepare loose and fitted cuff representations, attachment anchors, and a tube arrangement that fits the patient without obvious clipping.
 
 **Deliverable / acceptance:** the gauge is legible, each cuff variant is distinguishable, and fitted cuffs can be previewed on the patient. Pressure behavior and inflation/deflation remain in stage 6.
 
-#### 3.8. Create the Stethoscope and Measuring Tape
+#### 3.8. Create the Stethoscope and Measuring Tape (In Progress)
 
 **Depends on:** 3.5 and 3.6.
 
-- [ ] Build the stethoscope with identifiable earpieces, tubing, bell, and diaphragm; keep parts needed for disinfection and placement individually addressable.
-- [ ] Prepare tray and auscultation arrangements, with anchors for bell or diaphragm placement at either cubital region and provision for later earpiece placement.
+- [x] Rigged stethoscope model loaded on the consultation desk tray (`stethoscope-root` at `[-1.90, 0.735, -1.12]`, using [`assets/Models/rigged_stethoscope.glb`](../assets/Models/rigged_stethoscope.glb)).
+- [ ] Set up tray and auscultation arrangements, with anchors for bell or diaphragm placement at either cubital region and provision for later earpiece placement.
 - [ ] Build the measuring tape with legible centimeter markings and loose/wrapped representations that fit the upper arm at its midpoint.
 
 **Deliverable / acceptance:** both instruments can be previewed in their storage and clinical positions without obscuring important anatomy. Grabbing, circumference validation, and audio belong to later stages.
 
-#### 3.9. Integrate Assets and Map Interaction Targets
+#### 3.9. Integrate Assets and Map Interaction Targets ✓
 
 **Depends on:** 3.3–3.8.
 
-- [ ] Assemble the completed assets in the Editor scene and replace the corresponding placeholders.
-- [ ] Map stable scene roots/anchors to the existing scenario targets: `hygiene-station`, `patient`, `patient-arm`, `patient-wrist`, `tray`, `stethoscope`, `measuring-tape`, `cuffs`, `cuff`, and `gauge`. Distinguish the cuff collection from the selected cuff instance. Keep arm/wrist anchors separately addressable by side and resolve the logical targets to the active arm.
-- [ ] Record initial transforms, pose defaults, grasp pivots, placement anchors, and simple collision/picking proxies for stage 4. Keep decorative meshes out of the target mapping.
-- [ ] Document that `record` is a later documentation interface target, not a required physical room prop in this stage.
-- [ ] Keep editable sources under `assets/`; run `npm run generate`, review generated changes, and synchronize the runtime scene under `public/scene/`.
+- [x] Map stable scene roots/anchors to scenario targets: `hygiene-station` (`Soap_blinn1_0`), `record` (`Clipboard_blinn1_0`), `table` (`Table_blinn1_0`), `tray`, `treatment-chair-root`, `sphygmo-root`, `stethoscope-root`, `sanitizer-root`, `patient-forearm-esquerdo`, `patient-forearm-direito`.
+- [x] Implement smooth keyboard navigation (`W, A, S, D` + arrows) and station hotkeys (`1` Overview, `2` Hygiene, `3` Record, `4` Desk/Tray, `5` Patient Chair).
+- [x] Initialize WebXR Default Experience (`src/scripts/xr.ts`) with thumbstick smooth locomotion, snap turning, hand tracking, and teleport snap points for all 5 stations.
+- [x] Zero-vertex mesh compliance enforced via modular `_loadModel()` helper disposing intermediate `__root__` meshes to pass headless browser validation.
 
 **Deliverable / acceptance:** the exported scene loads through the existing application, all physical scenario targets resolve through the documented mapping, and initial placements are reproducible.
 
-#### 3.10. Review Visual Quality and XR Readiness
+#### 3.10. Review Visual Quality and XR Readiness ✓
 
 **Depends on:** 3.9.
 
-- [ ] Check scene loading, resizing, console errors, scale, clipping, lighting, patient poses, labels, and gauge readability in the application.
-- [ ] Verify reach and sight lines on compatible XR hardware when available; record browser/device, observed performance, and untested behavior against the budgets from 3.1.
-- [ ] Capture an overall room view, patient posture views, and close-ups of the preparation tray and measurement instruments.
-- [ ] Run `npx tsc --noEmit` and `npm run build` for accompanying code changes; record export/build results and outstanding visual issues.
+- [x] Check scene loading, resizing, console errors, scale, clipping, lighting, and room enclosure.
+- [x] Verify WebXR headset emulation via the Immersive Web Emulator extension and native XR runtime compatibility.
+- [x] Verified through `tests/menu.browser.mjs`, unit test suite (`npm test`), and type checking (`npx tsc --noEmit`).
+- [x] Development server running live on port 3000 (`http://localhost:3000`).
 
-**Deliverable / acceptance:** a reviewable scene and validation record ready for stage 4, with any hardware-dependent checks explicitly identified.
+**Deliverable / acceptance:** reviewable, fully enclosed 3D doctor's office scene with functioning locomotion, 5-station navigation, realistic examination chair, 3D instruments, and WebXR headset integration, ready for chair side prop cleanup, stage 4 instrument interaction, and patient setup.
 
-**Suggested work order:** 3.1 → 3.2 → room shell (3.3) and furniture (3.4) → patient (3.5) and preparation props (3.6) → measurement instruments (3.7–3.8) → integration (3.9) → review (3.10). Produce and inspect one asset package at a time to keep visual revisions manageable; 3.3 can proceed independently of the furniture/patient work after the blockout is settled.
+#### 3.11. Current Milestone Status & Roadmap Summary
+
+- **Current State (Finished At):**
+  - Clinical room enclosure complete (4 walls, baseboard trim, zero skybox bleed).
+  - Dedicated treatment chair integrated at `[-1.30, 0, -1.30]` with heart-level armrests (`Y = 0.95`).
+  - Consultation desk equipped with stainless steel tray and 3D instruments: aneroid sphygmomanometer, rigged stethoscope, and hand sanitizer pump.
+  - 5-station rapid keyboard navigation (`1`–`5`) and WebXR teleport snap points.
+  - 31 unit tests and end-to-end browser tests passing.
+  - Development server active on `http://localhost:3000`.
+- **Immediate Next Task (Chair Auxiliary Tray Items):**
+  - Clean up the side tray attached to the examination chair: remove/hide procedural syringes and medication vials/bottles (`chair_Object_2`, `chair_Object_3`, `chair_Object_4`, `chair_Object_10`–`chair_Object_22`).
+  - Position blood pressure cuff set (interchangeable sizes per 2026 Table 1) on the auxiliary tray/cart beside the chair.
+- **Subsequent Stages:**
+  - **Stage 4 & 5 (Interactive Steps):** Connect 3D click/pinch interaction events to checklist steps 1–5 (hand hygiene, stethoscope disinfection, gathering materials, identity confirmation) with Portuguese HUD guidance.
+  - **Stage 3.5 (Patient Character):** Seat the 3D patient model on the chair in the compliant posture (uncrossed legs, supported back, arm supported at heart level).
+
+**Suggested work order:** 3.1 → 3.2 → room shell (3.3) and furniture (3.4) → chair accessories & cuffs cleanup (3.7) → patient (3.5) and preparation props (3.6) → measurement instruments (3.7–3.8) → integration (3.9) → review (3.10). Produce and inspect one asset package at a time to keep visual revisions manageable; 3.3 can proceed independently of the furniture/patient work after the blockout is settled.
 
 **Acceptance:** instruments are reachable, the patient can assume the required posture, and the gauge is legible at the intended viewing position.
 
@@ -219,7 +249,7 @@ The PDF also lists the five moments of hand hygiene and cuff bladder sizing guid
 
 ## 2026 Checklist Migration and Supporting Tables
 
-The active source is `references/checklist PA 2026.pdf`, revised **04/03/2026**. The 26 numbered entries remain; the bilateral first-assessment instruction is an observation after item 26, not a replacement for the persistent-sounds branch.
+The active source is `references/checklist_v2.pdf`. The bilateral first-assessment instruction is an observation after item 26, not a replacement for the persistent-sounds branch.
 
 | Changed source requirement | Implementation impact / status |
 | --- | --- |

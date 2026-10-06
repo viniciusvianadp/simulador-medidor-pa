@@ -2,6 +2,8 @@ import { Scene } from "@babylonjs/core/scene";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { WebXRDefaultExperience } from "@babylonjs/core/XR/webXRDefaultExperience";
 import { WebXRFeatureName } from "@babylonjs/core/XR/webXRFeaturesManager";
+import { WebXRState } from "@babylonjs/core/XR/webXRTypes";
+import "@babylonjs/core/XR/features/WebXRControllerMovement";
 
 import { WebXRHandJoint, WebXRHandTracking } from "@babylonjs/core/XR/features/WebXRHandTracking";
 
@@ -12,8 +14,8 @@ export default class XR {
         const ground = this.scene.getMeshByName("ground");
         const box = this.scene.getMeshByName("box");
 
-        if (!ground || !box) {
-            console.error("XR: ground or box not found");
+        if (!ground) {
+            console.error("XR: ground not found");
             return;
         }
 
@@ -33,6 +35,48 @@ export default class XR {
 
             console.log("XR experience created:", xr);
 
+            // Enable thumbstick smooth locomotion and snap turning for VR controllers
+            try {
+                xr.baseExperience.featuresManager.enableFeature(
+                    WebXRFeatureName.MOVEMENT,
+                    "latest",
+                    {
+                        xrInput: xr.input,
+                        movementOrientationFollowsViewerPose: true,
+                        movementOrientationFollowsController: false,
+                        movementSpeed: 0.15,
+                        rotationSpeed: 0.3,
+                    }
+                );
+            } catch (movementError) {
+                console.warn("XR: Movement feature not available:", movementError);
+            }
+
+            // Spawn in the center of the doctor's office looking towards the counter
+            const initialSpawnPosition = new Vector3(0, 0, 0.5);
+            const initialTarget = new Vector3(0, 1.1, -1.8);
+
+            xr.baseExperience.onInitialXRPoseSetObservable.add((camera) => {
+                camera.position.copyFrom(initialSpawnPosition);
+                camera.setTarget(initialTarget);
+            });
+
+            xr.baseExperience.onStateChangedObservable.add((state) => {
+                if (state === WebXRState.IN_XR) {
+                    xr.baseExperience.camera.position.copyFrom(initialSpawnPosition);
+                    xr.baseExperience.camera.setTarget(initialTarget);
+                }
+            });
+
+            // Add snap points for the key clinical stations for teleportation
+            if (xr.teleportation) {
+                xr.teleportation.addSnapPoint(new Vector3(0, 0, 0.5));        // 1: Visão geral
+                xr.teleportation.addSnapPoint(new Vector3(0.79, 0, -1.6));    // 2: Estação de higiene (dispensador)
+                xr.teleportation.addSnapPoint(new Vector3(-0.07, 0, -1.3));   // 3: Prontuário / Balcão
+                xr.teleportation.addSnapPoint(new Vector3(-1.45, 0, -0.45));  // 4: Mesa & Instrumentos
+                xr.teleportation.addSnapPoint(new Vector3(-0.75, 0, -1.30));  // 5: Cadeira do paciente
+            }
+
             const handTracking =
                 xr.baseExperience.featuresManager.enableFeature(
                     WebXRFeatureName.HAND_TRACKING,
@@ -43,6 +87,10 @@ export default class XR {
                 ) as WebXRHandTracking;
 
             console.log("Hand tracking enabled:", handTracking);
+
+            // The clinical room uses hands for presence; instrument interactions
+            // arrive in stage 4. Retain pinch behavior in the original box scene.
+            if (!box) return;
 
             const originalParent = box.parent;
 
