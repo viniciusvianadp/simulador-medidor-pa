@@ -33,3 +33,7 @@ Desktop.ini
 
 # References
 !references/*.md
+
+# Scratch scripts and temporary test files
+scratch/
+

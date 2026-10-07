@@ -15,6 +15,18 @@ import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder";
 import { HavokPlugin } from "@babylonjs/core/Physics/v2/Plugins/havokPlugin";
 import XR from "./scripts/xr";
+import { buildCuffSet } from "./scene/buildCuffSet";
+import { raiseChairArmrest, posePatientRightArm } from "./scene/adjustChairAndPatientArm";
+
+// Bundle source models independently of the Editor-managed public/scene export.
+const clinicalModelUrls = {
+	"doctors_office.glb": new URL("../assets/Models/doctors_office.glb", import.meta.url).href,
+	"hospital_examination_and_treatment_chair.glb": new URL("../assets/Models/hospital_examination_and_treatment_chair.glb", import.meta.url).href,
+	"sphygmomanometer_low_poly.glb": new URL("../assets/Models/sphygmomanometer_low_poly.glb", import.meta.url).href,
+	"rigged_stethoscope.glb": new URL("../assets/Models/rigged_stethoscope.glb", import.meta.url).href,
+	"hand_sanitizer.glb": new URL("../assets/Models/hand_sanitizer.glb", import.meta.url).href,
+	"sitting_mannequin.glb": new URL("../assets/Models/sitting_mannequin.glb", import.meta.url).href,
+};
 
 import HavokPhysics from "@babylonjs/havok";
 
@@ -183,7 +195,7 @@ export class App {
 		dirLight.intensity = 0.5;
 
 		// Load doctors office GLB directly as the scene room
-		await SceneLoader.AppendAsync("/scene/assets/Models/", "doctors_office.glb", scene);
+		await SceneLoader.AppendAsync("", clinicalModelUrls["doctors_office.glb"], scene, undefined, ".glb");
 		if (scene.isDisposed) throw new Error("O carregamento foi interrompido.");
 
 		const officeRoot = new TransformNode("doctors-office-root", scene);
@@ -293,40 +305,100 @@ export class App {
 		if (genericBed) genericBed.setEnabled(false);
 
 		// Load clinical examination and treatment chair
-		await this._loadModel(
+		const chair = await this._loadModel(
 			"hospital_examination_and_treatment_chair.glb",
 			"treatment-chair-root",
 			0.035,
-			new Vector3(-1.30, 0, -1.30),
+			new Vector3(-1.15, 0.02, -1.25),
 			Math.PI / 2,
 			"chair"
 		);
 
+		// Meshes are grouped by material: 2, 3, 10, and 11 include chair structure.
+		// Remove only the inspected bottle, packaging, syringe, and tool meshes.
+		for (const id of [4, 5, 6, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]) {
+			scene.getMeshByName(`chair_Object_${id}`)?.setEnabled(false);
+		}
+		const chairBounds = chair.getHierarchyBoundingVectors(true, mesh => mesh.isEnabled());
+		chair.position.y -= chairBounds.min.y;
+		raiseChairArmrest(chair);
+
+		// Enable physical collision detection on all active chair meshes
+		for (const mesh of chair.getChildMeshes()) {
+			if (mesh.isEnabled()) {
+				mesh.checkCollisions = true;
+			}
+		}
+
+		// Dedicated invisible collision volumes covering the chair body and accessory tray
+		// from floor level up to standing height, preventing the player from walking through
+		// the chair or floating over low cushions during first-person locomotion.
+		const chairBodyCollider = CreateBox("chair-collider-body", { width: 0.82, depth: 0.74, height: 1.60 }, scene);
+		chairBodyCollider.position.set(-1.19, 0.80, -1.19);
+		chairBodyCollider.checkCollisions = true;
+		chairBodyCollider.visibility = 0;
+		chairBodyCollider.isPickable = false;
+
+		const chairTrayCollider = CreateBox("chair-collider-tray", { width: 0.62, depth: 0.39, height: 1.60 }, scene);
+		chairTrayCollider.position.set(-1.15, 0.80, -1.755);
+		chairTrayCollider.checkCollisions = true;
+		chairTrayCollider.visibility = 0;
+		chairTrayCollider.isPickable = false;
+
+		const chairTray = scene.getMeshByName("chair_Object_8") as Mesh | null;
+		if (!chairTray) throw new Error("Bandeja de manguitos não encontrada.");
+		await buildCuffSet(scene, chairTray);
+
+		// Load patient mannequin seated on the examination chair with arm at heart level
+		const patient = await this._loadModel(
+			"sitting_mannequin.glb",
+			"patient-root",
+			1.0,
+			new Vector3(-1.04, 0.332, -1.095),
+			Math.PI / 2,
+			"patient"
+		);
+		posePatientRightArm(patient);
+		for (const mesh of patient.getChildMeshes()) {
+			mesh.checkCollisions = true;
+			mesh.metadata = { assetId: "patient", logicalTarget: "patient" };
+		}
+
+		// Use the actual desktop height, not the model origin or an assumed desk height.
+		if (!table) throw new Error("Mesa de instrumentos não encontrada.");
+		table.computeWorldMatrix(true);
+		const desktopY = table.getBoundingInfo().boundingBox.maximumWorld.y;
+		const trayTopY = desktopY + 0.02;
+
 		// Load instruments onto the consultation desk / tray
-		await this._loadModel(
+		const sphygmo = await this._loadModel(
 			"sphygmomanometer_low_poly.glb",
 			"sphygmo-root",
 			0.11,
-			new Vector3(-1.90, 0.735, -0.85),
+			Vector3.Zero(),
 			0,
 			"sphygmo"
 		);
-		await this._loadModel(
+		const stethoscope = await this._loadModel(
 			"rigged_stethoscope.glb",
 			"stethoscope-root",
 			1.0,
-			new Vector3(-1.90, 0.735, -1.12),
+			Vector3.Zero(),
 			Math.PI / 4,
 			"stethoscope"
 		);
-		await this._loadModel(
+		const sanitizer = await this._loadModel(
 			"hand_sanitizer.glb",
 			"sanitizer-root",
 			0.0004,
-			new Vector3(-2.15, 0.725, -0.65),
+			Vector3.Zero(),
 			0,
 			"sanitizer"
 		);
+
+		this._placeModelOnSurface(sphygmo, new Vector3(-2.04, trayTopY, -0.88), "gauge");
+		this._placeModelOnSurface(stethoscope, new Vector3(-2.04, trayTopY, -1.17), "stethoscope");
+		this._placeModelOnSurface(sanitizer, new Vector3(-2.04, desktopY, -0.62), "hygiene-station");
 
 		// Ground plane for WebXR floor teleportation
 		const ground = CreateGround("ground", { width: 10, height: 10 }, scene);
@@ -341,8 +413,9 @@ export class App {
 		wallSide.visibility = 0;
 		wallSide.isPickable = false;
 
-		const tray = CreateBox("tray", { width: 0.55, height: 0.02, depth: 0.40 }, scene);
-		tray.position.set(-1.90, 0.725, -1.0);
+		const tray = CreateBox("tray", { width: 0.33, height: 0.02, depth: 0.62 }, scene);
+		tray.position.set(-2.04, desktopY + 0.01, -1.04);
+		tray.metadata = { assetId: "tray", logicalTarget: "tray" };
 		const trayMat = new PBRMaterial("tray-material", scene);
 		trayMat.albedoColor = new Color3(0.92, 0.94, 0.96);
 		trayMat.metallic = 0.85;
@@ -351,12 +424,12 @@ export class App {
 		tray.isPickable = true;
 
 		const armL = CreateSphere("patient-forearm-esquerdo", { diameter: 0.1 }, scene);
-		armL.position.set(-1.10, 0.95, -1.30);
+		armL.position.set(-0.85, 0.85, -0.95);
 		armL.visibility = 0;
 		armL.isPickable = false;
 
 		const armR = CreateSphere("patient-forearm-direito", { diameter: 0.1 }, scene);
-		armR.position.set(-1.50, 0.95, -1.30);
+		armR.position.set(-0.98, 1.085, -1.50);
 		armR.visibility = 0;
 		armR.isPickable = false;
 
@@ -397,11 +470,12 @@ export class App {
 				anchors: [
 					{ name: "hygiene-station", position: [0.792, 1.272, -2.391], logicalTarget: "hygiene-station" },
 					{ name: "record", position: [-0.072, 0.88, -1.824], logicalTarget: "record" },
-					{ name: "table", position: [-2.04, 0.501, -0.96], logicalTarget: "table" },
-					{ name: "treatment-chair", position: [-1.30, 0.60, -1.30], logicalTarget: "patient" },
-					{ name: "tray", position: [-1.90, 0.725, -1.0], logicalTarget: "tray" },
-					{ name: "sphygmomanometer", position: [-1.90, 0.735, -0.85], logicalTarget: "gauge" },
-					{ name: "stethoscope", position: [-1.90, 0.735, -1.12], logicalTarget: "stethoscope" },
+					{ name: "table", position: [-2.04, desktopY, -0.96], logicalTarget: "table" },
+					{ name: "treatment-chair", position: [-1.00, 0.72, -1.10], logicalTarget: "patient" },
+					{ name: "tray", position: tray.position.asArray(), logicalTarget: "tray" },
+					{ name: "sphygmomanometer", position: [-2.04, trayTopY, -0.88], logicalTarget: "gauge" },
+					{ name: "sanitizer", position: [-2.04, desktopY, -0.62], logicalTarget: "hygiene-station" },
+					{ name: "stethoscope", position: [-2.04, trayTopY, -1.17], logicalTarget: "stethoscope" },
 				],
 			},
 			scripts: [{ enabled: true, key: "scripts/xr.ts", _id: "clinical-room-xr", debugOnly: false }],
@@ -412,8 +486,21 @@ export class App {
 		await xr.onStart();
 	}
 
+	private _placeModelOnSurface(root: TransformNode, center: Vector3, logicalTarget: string): void {
+		const bounds = root.getHierarchyBoundingVectors(true);
+		root.position.addInPlace(new Vector3(
+			center.x - (bounds.min.x + bounds.max.x) / 2,
+			center.y - bounds.min.y,
+			center.z - (bounds.min.z + bounds.max.z) / 2,
+		));
+		for (const mesh of root.getChildMeshes()) {
+			mesh.metadata = { ...mesh.metadata, assetId: root.name, logicalTarget };
+			mesh.computeWorldMatrix(true);
+		}
+	}
+
 	private async _loadModel(
-		fileName: string,
+		fileName: keyof typeof clinicalModelUrls,
 		rootName: string,
 		scale: number,
 		position: Vector3,
@@ -422,7 +509,7 @@ export class App {
 	): Promise<TransformNode> {
 		if (!this._scene) throw new Error("Scene not initialized");
 		const prevMeshes = new Set(this._scene.meshes);
-		await SceneLoader.AppendAsync("/scene/assets/Models/", fileName, this._scene);
+		await SceneLoader.AppendAsync("", clinicalModelUrls[fileName], this._scene, undefined, ".glb");
 		const newMeshes = this._scene.meshes.filter(m => !prevMeshes.has(m) && m.name !== "__root__");
 		const gltfRoot = this._scene.getMeshByName("__root__");
 		const rootNode = new TransformNode(rootName, this._scene);
@@ -456,10 +543,10 @@ export class App {
 			overview: { pos: [0, 1.6, 0.5], lookAt: [0, 1.1, -1.8] },
 			hygiene: { pos: [0.79, 1.6, -1.5], lookAt: [0.79, 1.27, -2.39] },
 			prontuario: { pos: [-0.07, 1.6, -1.2], lookAt: [-0.07, 0.88, -1.82] },
-			mesa: { pos: [-1.45, 1.35, -0.45], lookAt: [-1.90, 0.75, -1.0] },
-			cadeira: { pos: [-0.75, 1.35, -1.30], lookAt: [-1.30, 0.95, -1.30] },
-			esquerdo: { pos: [-1.10, 1.45, -1.0], lookAt: [-1.10, 0.95, -1.30] },
-			direito: { pos: [-1.50, 1.45, -1.0], lookAt: [-1.50, 0.95, -1.30] },
+			mesa: { pos: [-1.50, 1.60, -0.50], lookAt: [-2.04, 1.0, -1.0] },
+			cadeira: { pos: [-0.20, 1.70, -0.35], lookAt: [-1.00, 1.00, -1.15] },
+			esquerdo: { pos: [-0.60, 1.60, -0.65], lookAt: [-0.85, 0.85, -0.95] },
+			direito: { pos: [-0.60, 1.60, -1.80], lookAt: [-0.98, 1.085, -1.50] },
 		};
 		const target = targets[station];
 		if (!target) return;

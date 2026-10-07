@@ -6,15 +6,18 @@ Create **“Simulador de medição de pressão arterial”**, a Portuguese-langu
 
 This document is a proposed implementation roadmap and progress tracker. The current repository provides:
 - A fully enclosed 3D doctor's office room imported from [`doctors_office.glb`](../assets/Models/doctors_office.glb) with 4 complete walls, floor collision, and clinical lighting.
-- Dedicated clinical examination and treatment chair ([`hospital_examination_and_treatment_chair.glb`](../assets/Models/hospital_examination_and_treatment_chair.glb)) installed in place of the generic couch, featuring heart-level armrests and forearm proxies.
+- Dedicated clinical examination and treatment chair ([`hospital_examination_and_treatment_chair.glb`](../assets/Models/hospital_examination_and_treatment_chair.glb)) installed in place of the generic couch, with provisional forearm proxies; anatomical fit awaits the patient model.
 - 3D instruments placed on the consultation desk / stainless steel tray: aneroid sphygmomanometer ([`sphygmomanometer_low_poly.glb`](../assets/Models/sphygmomanometer_low_poly.glb)), rigged stethoscope ([`rigged_stethoscope.glb`](../assets/Models/rigged_stethoscope.glb)), and hand sanitizer pump ([`hand_sanitizer.glb`](../assets/Models/hand_sanitizer.glb)).
 - First-person walking controls with collision detection (`W, A, S, D` / arrows) and 5 quick station shortcuts (`1` Overview, `2` Hygiene/Sink, `3` Clipboard/Record, `4` Doctor's Desk / Instrument Tray, `5` Patient Examination Chair).
 - WebXR Default Experience (`src/scripts/xr.ts`) with thumbstick locomotion, teleportation snap points, hand tracking, and compatibility with the Immersive Web Emulator and VR headsets.
 - A responsive Portuguese start menu with scenario configuration and patient selection (`src/ui/StartMenu.ts`).
 - A verified 26-step single-arm auscultatory simulation engine (`src/simulation/`) with 31 unit tests and automated browser integration tests.
-- Step guidance HUD is temporarily decoupled during 3D room navigation testing. The bilateral first-assessment workflow and detailed instrument interaction models remain pending.
+- `src/interaction/InteractionManager.ts` is an inactive interaction/HUD prototype: neither `App` nor the XR script instantiates it. It requires the stage-4 corrections below before integration. The bilateral first-assessment workflow and detailed instrument interaction models remain pending.
+- Task (1) placement corrections are implemented: instruments and sanitizer are aligned to the measured desktop/tray surface, chair props are cleared, and the chair faces into the room. Desktop review is recorded below; headset reach and patient fit remain pending.
 
 ## Reference Files and Visual Direction
+
+**Runtime model loading:** `App.ts` references the five source GLBs in `assets/Models` through static Vite asset URLs. Vite serves them during development and bundles them for production. The clinical room must not depend on duplicate GLBs under the Editor-managed `public/scene/assets/Models` directory: those copies can disappear during an export. Editor scene exports remain separate from this code-composed room.
 
 | Local reference | Intended use | Adaptation for this project |
 | --- | --- | --- |
@@ -44,7 +47,7 @@ Implement the reference-inspired menu with the title, initial scenario, brief in
 
 ### 3. Assemble the Clinical Room
 
-Build this stage as small visual work packages in Babylon.js Editor. Stage 3.1 is complete and 3.2 has a generated desktop blockout; detailed asset packages remain pending. Each package should produce editable assets, a matching runtime export in `public/scene/` when integrated, and a screenshot from the learner's viewing position. Keep interaction logic, guidance UI, clinical validation, and measurement audio in stages 4–6; this stage prepares their visual assets and attachment points.
+Build this stage as small visual work packages. The initial procedural blockout has been superseded at runtime by GLB imports and procedural additions in `src/App.ts`; retain editable source assets and matching runtime assets in `public/scene/`, and do not describe the current room as a completed Editor export. Each package should include a screenshot from the learner's viewing position. Stages 3.3–3.4 have their initial integration complete, but placement corrections and detailed asset packages remain pending. Keep interaction logic, guidance UI, clinical validation, and measurement audio in stages 4–6; this stage prepares their visual assets and attachment points.
 
 #### 3.1. Define the Asset Inventory and Visual Style ✓
 
@@ -82,30 +85,35 @@ Build this stage as small visual work packages in Babylon.js Editor. Stage 3.1 i
 **Depends on:** 3.2; use the materials defined in 3.1.
 
 - [x] Countertop with sink (`Counter_blinn1_0`), consultation desk (`Table_blinn1_0`), cupboards, stool, and office elements provided by `doctors_office.glb`.
-- [x] Hide generic examination bed (`Bed_blinn1_0.setEnabled(false)`) and replace it with dedicated clinical examination chair ([`hospital_examination_and_treatment_chair.glb`](../assets/Models/hospital_examination_and_treatment_chair.glb)) positioned at `[-1.30, 0, -1.30]` with 90° rotation.
-- [x] Armrests positioned at heart level (`Y = 0.95`), aligning `patient-forearm-esquerdo` and `patient-forearm-direito` logical proxies for clinical guidelines compliance.
-- [x] Consultation desk equipped with a metallic PBR tray (`tray`) at `[-1.90, 0.725, -1.0]` as the staging surface for medical instruments.
-- [x] Station navigation updated with station `5` (`cadeira` at `[-0.75, 1.35, -1.30]`, facing `[-1.30, 0.95, -1.30]`) and WebXR teleportation snap points.
+- [x] Hide generic examination bed (`Bed_blinn1_0.setEnabled(false)`) and replace it with dedicated clinical examination chair ([`hospital_examination_and_treatment_chair.glb`](../assets/Models/hospital_examination_and_treatment_chair.glb)) positioned at `[-1.15, ~0.02, -1.25]` with +90° rotation and geometry-based floor alignment. Corrected by 180° following the learner-view screenshot review.
+- [x] Provisional `patient-forearm-esquerdo` and `patient-forearm-direito` logical proxies at `Y = 0.95`; this is a targeting placeholder, not verified anatomical/heart-level alignment.
+- [x] Consultation desk equipped with a metallic PBR tray (`tray`) at `[-2.04, ~0.988, -1.04]` as the staging surface for medical instruments.
+- [x] Station navigation updated with station `5` (`cadeira` at `[-0.20, 1.70, -0.35]`, facing `[-1.15, 0.95, -1.45]`) and WebXR teleportation snap points.
+- [x] Fixed chair collisions: Enabled collision detection across all active chair meshes and added full-height invisible box collision proxies (`chair-collider-body` and `chair-collider-tray`), preventing player locomotion from penetrating the chair or floating over low cushions from any angle.
 
-**Delivered:** clinical examination chair and instrument tray fully integrated in `src/App.ts`, providing the required ergonomic support, reach zones, and viewing angles for blood pressure measurement.
+**Delivered:** clinical examination chair and instrument tray loaded in `src/App.ts`. Ergonomic fit, reach, support-surface alignment, and viewing angles remain subject to task (1) placement review and the patient-pose review; invisible forearm proxies do not establish patient posture compliance.
 
-#### 3.5. Create the Patient and Required Pose Variants
+#### 3.5. Create the Patient and Required Pose Variants (In Progress)
 
 **Depends on:** 3.4.
 
-- [ ] Create a fictional, consistently styled patient with both measurement arms accessible and clear elbow/wrist anatomy.
-- [ ] Prepare a rig or explicit pose variants for the hand at waist height with elbow flexed, the arm extended alongside the body, and the supported measurement pose with palm upward and elbow slightly flexed.
-- [ ] Provide anchors for the acromion, olecranon, upper-arm midpoint, brachial/cubital region, and radial pulse location on each arm. These support later targeting; permanent visible anatomy markers are not required.
-- [ ] Check uncrossed legs, feet on the floor, back support, and room for the cuff and stethoscope in the measurement pose.
+- [x] Integrate 3D patient model ([`assets/Models/sitting_mannequin.glb`](../assets/Models/sitting_mannequin.glb)) seated on the clinical examination chair (`patient-root` at `[-1.22, 0.28, -1.20]`, rotated +90°).
+- [x] Ergonomic alignment: Back rests against the chair's backrest, buttocks and thighs rest horizontally on the seat cushion (`wy ~ 0.76`), knees rest at the front edge of the seat, and feet extend down toward the footrest.
+- [x] Arm and hand positioning: Both arms accessible, resting forward with hands on thighs, leaving left arm (`[-1.24, 0.95, -1.03]`) and right arm (`[-1.24, 0.95, -1.38]`) directly adjacent to the armrests and cuff tray.
+- [x] Aligned logical targeting proxies (`patient-forearm-esquerdo` and `patient-forearm-direito`) and camera navigation targets (`cadeira`, `esquerdo`, `direito`) with the mannequin's anatomical upper arm and cubital fossa coordinates.
+- [x] Collision detection enabled on patient geometry (`patient_Object_2.checkCollisions = true`) with semantic metadata (`assetId: "patient"`, `logicalTarget: "patient"`).
+- [ ] Prepare arm pose variants and anatomical anchors for circumference measurement, cuff fitting, and pulse/stethoscope placement.
+- [x] Check uncrossed legs, feet on the floor/footrest, back support, and room for the cuff and stethoscope in the measurement pose.
 
-**Deliverable / acceptance:** each required pose can be previewed manually, fits the furniture, and leaves measurement landmarks accessible. Runtime posture selection belongs to stage 5.
+**Delivered:** seated patient model loaded in `src/App.ts`, correctly positioned on the clinical treatment chair with verified ergonomic posture, accessible arms, and automated browser test assertions.
 
 #### 3.6. Create the Hygiene and Preparation Assets (In Progress)
 
 **Depends on:** 3.2 and 3.4.
 
 - [x] Soap dispenser (`Soap_blinn1_0`) and glove box dispenser integrated on the counter wall.
-- [x] Integrate dedicated hand sanitizer pump model ([`assets/Models/hand_sanitizer.glb`](../assets/Models/hand_sanitizer.glb)) positioned on the consultation desk next to the tray (`[-2.15, 0.725, -0.65]`).
+- [x] Integrate dedicated hand sanitizer pump model ([`assets/Models/hand_sanitizer.glb`](../assets/Models/hand_sanitizer.glb)) positioned on the consultation desk next to the tray (surface center `[-2.04, ~0.978, -0.62]`).
+- [x] Correct the sanitizer's provisional placement as part of task (1): verify its visible base rests on the intended surface, its scale/orientation is appropriate, and its pump is visible and reachable.
 - [ ] Add 70% alcohol container and cotton for stethoscope disinfection (checklist step 2).
 - [ ] Add legible Portuguese labels where needed, including “Álcool 70%”. Distinguish instrument disinfectant from the hand-hygiene station.
 
@@ -115,12 +123,13 @@ Build this stage as small visual work packages in Babylon.js Editor. Stage 3.1 i
 
 **Depends on:** 3.4 and 3.5.
 
-- [x] Low-poly aneroid sphygmomanometer model loaded on the consultation desk tray (`sphygmo-root` at `[-1.90, 0.735, -0.85]`, using [`assets/Models/sphygmomanometer_low_poly.glb`](../assets/Models/sphygmomanometer_low_poly.glb)).
-- [ ] **Chair auxiliary tray cleanup (Remove drugs and syringes)**: The clinical examination chair model (`hospital_examination_and_treatment_chair.glb`) includes built-in procedural props on its attached side tray (syringes, drug bottles/vials, medicine containers: meshes `chair_Object_2`, `chair_Object_3`, `chair_Object_4`, and `chair_Object_10` through `chair_Object_22`). Because this simulation strictly evaluates blood pressure measurement, these unrelated medication and syringe meshes must be removed or disabled (`setEnabled(false)`).
-- [ ] **Place Blood Pressure Cuffs beside the chair**: In place of the removed drugs and syringes, position the blood pressure cuff set on the auxiliary table / tray beside the patient chair. The cuffs must be readily accessible for arm circumference sizing and selection according to 2026 Table 1 (Recém-nascido, Criança, Infantil, Adulto pequeno, Adulto, Adulto grande, Coxa).
+- [x] Low-poly aneroid sphygmomanometer model loaded on the consultation desk tray (`sphygmo-root` at surface center `[-2.04, ~0.998, -0.88]`, using [`assets/Models/sphygmomanometer_low_poly.glb`](../assets/Models/sphygmomanometer_low_poly.glb)).
+- [x] **Chair auxiliary tray cleanup:** disabled verified prop meshes `chair_Object_4`–`chair_Object_6` and `chair_Object_12`–`chair_Object_24`. Preserve `chair_Object_2`, `chair_Object_3`, `chair_Object_7`–`chair_Object_11`: the earlier removal list incorrectly included chair structure. Meshes are grouped by material, so numeric IDs are not semantic object labels.
+- [x] **Place Blood Pressure Cuffs beside the chair**: In place of the removed drugs and syringes, position the blood pressure cuff set on the auxiliary table / tray beside the patient chair. The cuffs must be readily accessible for arm circumference sizing and selection according to 2026 Table 1 (Recém-nascido, Criança, Infantil, Adulto pequeno, Adulto, Adulto grande, Coxa).
 - [ ] Build/verify the aneroid gauge, separate needle, inflation bulb, valve, and connecting tubes. Give the needle and valve usable pivots for later animation.
 - [ ] Create an accurate, readable gauge face with units and controlled numeric markings; verify it at the intended viewing distance.
-- [ ] Create all seven cuff size variants from the 2026 Table 1 below (including “Coxa”), matching `clinicalParameters.ts`, with readable size labels and alignment markings.
+- [x] Create all seven folded storage cuff variants from Table 1 (including “Coxa”), matching `clinicalParameters.ts`, with readable Portuguese size/range tags. Assets and generation details: [`assets/Models/cuffs/README.md`](../assets/Models/cuffs/README.md).
+- [ ] Add fitted-cuff artery alignment markings and attachment geometry after patient integration.
 - [ ] Prepare loose and fitted cuff representations, attachment anchors, and a tube arrangement that fits the patient without obvious clipping.
 
 **Deliverable / acceptance:** the gauge is legible, each cuff variant is distinguishable, and fitted cuffs can be previewed on the patient. Pressure behavior and inflation/deflation remain in stage 6.
@@ -129,13 +138,13 @@ Build this stage as small visual work packages in Babylon.js Editor. Stage 3.1 i
 
 **Depends on:** 3.5 and 3.6.
 
-- [x] Rigged stethoscope model loaded on the consultation desk tray (`stethoscope-root` at `[-1.90, 0.735, -1.12]`, using [`assets/Models/rigged_stethoscope.glb`](../assets/Models/rigged_stethoscope.glb)).
+- [x] Rigged stethoscope model loaded on the consultation desk tray (`stethoscope-root` at surface center `[-2.04, ~0.998, -1.17]`, using [`assets/Models/rigged_stethoscope.glb`](../assets/Models/rigged_stethoscope.glb)).
 - [ ] Set up tray and auscultation arrangements, with anchors for bell or diaphragm placement at either cubital region and provision for later earpiece placement.
 - [ ] Build the measuring tape with legible centimeter markings and loose/wrapped representations that fit the upper arm at its midpoint.
 
 **Deliverable / acceptance:** both instruments can be previewed in their storage and clinical positions without obscuring important anatomy. Grabbing, circumference validation, and audio belong to later stages.
 
-#### 3.9. Integrate Assets and Map Interaction Targets ✓
+#### 3.9. Integrate Assets and Map Interaction Targets (Partial — Current Room Only)
 
 **Depends on:** 3.3–3.8.
 
@@ -144,40 +153,70 @@ Build this stage as small visual work packages in Babylon.js Editor. Stage 3.1 i
 - [x] Initialize WebXR Default Experience (`src/scripts/xr.ts`) with thumbstick smooth locomotion, snap turning, hand tracking, and teleport snap points for all 5 stations.
 - [x] Zero-vertex mesh compliance enforced via modular `_loadModel()` helper disposing intermediate `__root__` meshes to pass headless browser validation.
 
-**Deliverable / acceptance:** the exported scene loads through the existing application, all physical scenario targets resolve through the documented mapping, and initial placements are reproducible.
+**Current scope:** the application loads the current GLB room and initial named roots/proxies. This does not establish complete interaction mapping: the patient, cuffs, measuring tape, and disinfectant assets remain pending, and imported mesh metadata, guidance targets, and actual world positions still require reconciliation.
 
-#### 3.10. Review Visual Quality and XR Readiness ✓
+- [ ] After placement corrections and remaining assets, verify every scenario target resolves to its actual mesh/anchor; derive guidance positions from these anchors instead of duplicated coordinates.
+
+**Deliverable / acceptance:** the runtime scene loads through the existing application, all physical scenario targets resolve through the documented mapping, and accepted placements are reproducible.
+
+#### 3.10. Review Visual Quality and XR Readiness (Partial — Current Room Only)
 
 **Depends on:** 3.9.
 
 - [x] Check scene loading, resizing, console errors, scale, clipping, lighting, and room enclosure.
 - [x] Verify WebXR headset emulation via the Immersive Web Emulator extension and native XR runtime compatibility.
 - [x] Verified through `tests/menu.browser.mjs`, unit test suite (`npm test`), and type checking (`npx tsc --noEmit`).
-- [x] Development server running live on port 3000 (`http://localhost:3000`).
+- Development URL: `http://localhost:3000` when `npm run dev` is running; server availability is transient, not a completed milestone.
 
-**Deliverable / acceptance:** reviewable, fully enclosed 3D doctor's office scene with functioning locomotion, 5-station navigation, realistic examination chair, 3D instruments, and WebXR headset integration, ready for chair side prop cleanup, stage 4 instrument interaction, and patient setup.
+**Current scope:** the checked entries above record earlier current-room checks, not fresh verification or complete scenario/XR acceptance. Task (1) corrects the imported-model placements; final patient fit and headset reach remain open. Browser automation/emulation does not replace compatible-headset testing; record the actual browser/device and untested behavior with each review.
+
+- [ ] Repeat visual review after task (1), patient integration, and instrument integration, including support contact, clipping, scale, reach, label/gauge readability, resizing, and console errors.
+- [ ] Validate instrument interactions on compatible XR hardware after stage 4; hands currently provide presence in the clinical room, while pinch ownership logic remains specific to the original box prototype.
+
+**Deliverable / acceptance:** reviewable clinical scene with accepted placements and recorded desktop/XR evidence for the implemented scope. Full scenario acceptance remains stage 8.
 
 #### 3.11. Current Milestone Status & Roadmap Summary
 
 - **Current State (Finished At):**
   - Clinical room enclosure complete (4 walls, baseboard trim, zero skybox bleed).
-  - Dedicated treatment chair integrated at `[-1.30, 0, -1.30]` with heart-level armrests (`Y = 0.95`).
+  - Dedicated treatment chair integrated at `[-1.15, ~0.02, -1.25]` with provisional forearm proxies (`Y = 0.95`).
   - Consultation desk equipped with stainless steel tray and 3D instruments: aneroid sphygmomanometer, rigged stethoscope, and hand sanitizer pump.
   - 5-station rapid keyboard navigation (`1`–`5`) and WebXR teleport snap points.
-  - 31 unit tests and end-to-end browser tests passing.
-  - Development server active on `http://localhost:3000`.
-- **Immediate Next Task (Chair Auxiliary Tray Items):**
-  - Clean up the side tray attached to the examination chair: remove/hide procedural syringes and medication vials/bottles (`chair_Object_2`, `chair_Object_3`, `chair_Object_4`, `chair_Object_10`–`chair_Object_22`).
-  - Position blood pressure cuff set (interchangeable sizes per 2026 Table 1) on the auxiliary tray/cart beside the chair.
+  - Earlier plan entries report 31 unit tests and browser checks passing; rerun relevant checks for implementation changes rather than treating this as a current test result.
+  - Imported props have corrected desktop placements; headset reach remains pending. Patient posture and complete instrument interactions are not implemented.
+- **Task (1) — Correct Imported-Model Placement and Clean Up the Chair Tray (Implemented; Headset Review Pending):**
+  - Review all models imported from `assets/Models`, especially the hand sanitizer, sphygmomanometer, stethoscope, and treatment chair, together with the procedural instrument tray. Correct position, rotation, and scale using visible geometry/world bounds and actual supporting surfaces, rather than assuming imported origins sit at the model base.
+  - Ensure objects rest on their intended desk/tray/floor surfaces without floating, clipping, or unintended overlaps; keep the sanitizer pump and instruments visible and reachable from the relevant learner stations. Review chair placement against the room and reserve space for the future patient and both arms.
+  - Clean up the side tray attached to the examination chair: remove/hide procedural syringes and medication vials/bottles (`chair_Object_4`–`chair_Object_6`, `chair_Object_12`–`chair_Object_24`); preserve chair structure as documented in 3.7.
+  - Acceptance: inspect overview, desk, and chair views; capture screenshots; reconcile scene anchors/station views with corrected placements; run type checking and production build and check browser loading/resizing/console errors. Record hardware-dependent reach checks still outstanding.
+- **Task (2) — Add the Stored Cuff Set (Implemented; Headset Review Pending):**
+  - Seven separately identifiable, Portuguese-labeled folded cuffs are placed on the cleared chair tray. `assets/Models/cuffs/folded-cuff.glb` is the shared extracted mesh; `variants.json` records the seven derived definitions. `src/scene/cuffVariants.ts` derives sizes from clinical data and `src/scene/buildCuffSet.ts` instantiates them with stable IDs. Regenerate via `npm run cuffs:generate`. Fitted representations depend on the patient geometry in 3.5.
+  - Desktop checks cover support contact, tray containment, non-overlap, IDs, scene loading/reset/resizing, and visual readability. Folded proportions are explicit art assumptions, not clinical sleeve measurements; physical-headset reach/readability remain pending.
+- **Pending room-navigation fix — Chair collisions:** the learner can currently walk through the imported chair. Add appropriate collision geometry and verify desktop walking and XR locomotion separately in a future scene update.
+- **Task (3) — Patient and Remaining Preparation/Instrument Assets:** complete 3.5–3.8 dependencies described below.
+- **Task (4) — Start from the Existing InteractionManager Prototype:** review and refactor `src/interaction/InteractionManager.ts` using the stage-4 checklist before instantiating it. First deliver validated hand hygiene with a scene-bound arrow and Portuguese desktop/XR guidance, then extend to steps 2–5. Verify wrong-target rejection, one action per gesture, controller-based feedback, and restart cleanup. Keep automatic answers and synthetic waits out of the learner flow.
 - **Subsequent Stages:**
-  - **Stage 4 & 5 (Interactive Steps):** Connect 3D click/pinch interaction events to checklist steps 1–5 (hand hygiene, stethoscope disinfection, gathering materials, identity confirmation) with Portuguese HUD guidance.
-  - **Stage 3.5 (Patient Character):** Seat the 3D patient model on the chair in the compliant posture (uncrossed legs, supported back, arm supported at heart level).
+  - **Stage 3.5 (Patient Character):** Create the seated patient, required pose variants, and bilateral anatomical anchors before final fitted cuff/stethoscope placement.
+  - **Stage 3.6–3.8 (Remaining Assets):** Add alcohol 70%, cotton, measuring tape, fitted cuffs, and usable gauge/instrument components.
+  - **Stage 4 & 5 (Interactive Steps):** Correct the inactive interaction prototype as specified below, then connect validated desktop/XR events for checklist steps 1–5 with Portuguese guidance.
+
+**Task (1) implementation notes (2026-10-05):** `App.ts` measures the imported table top (~0.978 m), fits a 0.33 × 0.62 m tray to its footprint, and aligns instrument/bottle geometry bounds to their supporting surfaces. Existing model scales are retained after desktop inspection. Chair floor contact, orientation, station viewpoints, XR snap points, and instrument metadata are updated. Original GLBs remain unchanged; the runtime composition is in code. Forearm proxies remain provisional until the patient is built. Type checking and the existing browser integration suite passed (layout, scene loading, navigation/collision, restart/reset, resizing, and load-failure recovery); production build passed with the existing bundle-size warning. Desktop screenshots: `/tmp/xr-after-desk.png`, `/tmp/xr-after-chair.png`, `/tmp/xr-after-overview.png`. Validation uses isolated headless Google Chrome 153.0.8010.47 on Linux; no physical XR headset was available.
 
 **Suggested work order:** 3.1 → 3.2 → room shell (3.3) and furniture (3.4) → chair accessories & cuffs cleanup (3.7) → patient (3.5) and preparation props (3.6) → measurement instruments (3.7–3.8) → integration (3.9) → review (3.10). Produce and inspect one asset package at a time to keep visual revisions manageable; 3.3 can proceed independently of the furniture/patient work after the blockout is settled.
 
 **Acceptance:** instruments are reachable, the patient can assume the required posture, and the gauge is legible at the intended viewing position.
 
 ### 4. Implement Hands and Step Guidance
+
+**Existing prototype and integration prerequisites:** `src/interaction/InteractionManager.ts` contains a DOM guidance card, animated 3D arrow, pointer picking, mesh-name target resolution, and a switch that dispatches events for the active checklist step. It is not instantiated by the running app and is not connected to XR pinch input. Its presence does not mean stage 4 is implemented.
+
+- [ ] Replace automatic answer submission with actual learner actions/dialogue/input and instrument state. The prototype currently supplies identity, cuff choice, pressure readings, disinfection, and material-gathering results on behalf of the learner. Keep any mock automation explicitly separate from assessed interaction.
+- [ ] Implement elapsed-time handling; immediate dispatch of rest/wait completion with numeric durations is not a timer. Any accelerated mode must explicitly label simulated time.
+- [ ] Use controller dispatch results and refreshed state to decide success feedback and progression; current handlers display success without checking acceptance.
+- [ ] Resolve arrows and input targets through actual scene anchors/metadata after task (1). Existing hard-coded patient/instrument positions reflect an older layout, and name fallback omits imported sanitizer/sphygmomanometer prefixes. Remove stale station assumptions and support the active arm.
+- [ ] Reuse canonical scenario prompts/labels. The prototype still asks for forward-facing earpieces and offers only bell placement despite the revised checklist wording and bell/diaphragm support in the engine.
+- [ ] Prevent duplicate actions from handling both pointer-down and pointer-pick for one gesture. Connect desktop and XR input to the same validated action path with exclusive ownership, release, and tracking-loss handling.
+- [ ] Integrate initialization after the simulation is ready, state refresh after accepted actions, and cleanup on restart/menu return, including observers and pending feedback timers. Provide guidance visible inside immersive XR; the existing DOM card alone is not sufficient.
 
 Adapt the existing hand-tracking and pinch prototype for selecting, picking up, placing, and releasing instruments. Use simplified visible hands inspired by the reference. Define valid placement zones, prevent simultaneous ownership of an instrument, and recover cleanly from tracking loss. Add a current-step panel and a target arrow; completion should follow validated interactions. Use dialogue choices for verbal actions and explicit representations for actions without a practical tracked gesture.
 

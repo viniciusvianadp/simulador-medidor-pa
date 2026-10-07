@@ -73,8 +73,8 @@ export default class XR {
                 xr.teleportation.addSnapPoint(new Vector3(0, 0, 0.5));        // 1: Visão geral
                 xr.teleportation.addSnapPoint(new Vector3(0.79, 0, -1.6));    // 2: Estação de higiene (dispensador)
                 xr.teleportation.addSnapPoint(new Vector3(-0.07, 0, -1.3));   // 3: Prontuário / Balcão
-                xr.teleportation.addSnapPoint(new Vector3(-1.45, 0, -0.45));  // 4: Mesa & Instrumentos
-                xr.teleportation.addSnapPoint(new Vector3(-0.75, 0, -1.30));  // 5: Cadeira do paciente
+                xr.teleportation.addSnapPoint(new Vector3(-1.50, 0, -0.50));  // 4: Mesa & Instrumentos
+                xr.teleportation.addSnapPoint(new Vector3(-0.20, 0, -0.35));  // 5: Cadeira do paciente
             }
 
             const handTracking =

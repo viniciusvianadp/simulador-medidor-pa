@@ -1,0 +1,94 @@
+{
+	"generatedBy": "scripts/generate-cuffs.mjs",
+	"model": "folded-cuff.glb",
+	"clinicalSource": "src/simulation/clinicalParameters.ts",
+	"visualSource": "src/scene/cuffVariants.ts",
+	"representation": "folded-storage-only",
+	"note": "Folded dimensions are visual approximations, not bladder or fitted-sleeve dimensions. All variants share one GLB and texture atlas.",
+	"variants": [
+		{
+			"id": "newborn",
+			"label": "Recém-nascido",
+			"min": 0,
+			"max": 6,
+			"width": 3,
+			"length": 6,
+			"rangeLabel": "≤ 6 cm",
+			"foldedWidthM": 0.05,
+			"foldedDepthM": 0.035,
+			"foldedHeightM": 0.0138
+		},
+		{
+			"id": "child",
+			"label": "Criança",
+			"min": 6,
+			"max": 15,
+			"width": 5,
+			"length": 15,
+			"rangeLabel": "6–15 cm",
+			"foldedWidthM": 0.07,
+			"foldedDepthM": 0.0575,
+			"foldedHeightM": 0.015
+		},
+		{
+			"id": "infant",
+			"label": "Infantil",
+			"min": 16,
+			"max": 21,
+			"width": 8,
+			"length": 21,
+			"rangeLabel": "16–21 cm",
+			"foldedWidthM": 0.1,
+			"foldedDepthM": 0.0725,
+			"foldedHeightM": 0.0168
+		},
+		{
+			"id": "small-adult",
+			"label": "Adulto pequeno",
+			"min": 22,
+			"max": 26,
+			"width": 10,
+			"length": 24,
+			"rangeLabel": "22–26 cm",
+			"foldedWidthM": 0.12,
+			"foldedDepthM": 0.08,
+			"foldedHeightM": 0.018
+		},
+		{
+			"id": "adult",
+			"label": "Adulto",
+			"min": 27,
+			"max": 34,
+			"width": 13,
+			"length": 30,
+			"rangeLabel": "27–34 cm",
+			"foldedWidthM": 0.15,
+			"foldedDepthM": 0.095,
+			"foldedHeightM": 0.019799999999999998
+		},
+		{
+			"id": "large-adult",
+			"label": "Adulto grande",
+			"min": 35,
+			"max": 44,
+			"width": 16,
+			"length": 38,
+			"rangeLabel": "35–44 cm",
+			"foldedWidthM": 0.18,
+			"foldedDepthM": 0.115,
+			"foldedHeightM": 0.0216
+		},
+		{
+			"id": "thigh",
+			"label": "Coxa",
+			"min": 45,
+			"max": 52,
+			"width": 20,
+			"length": 42,
+			"rangeLabel": "45–52 cm",
+			"foldedWidthM": 0.22,
+			"foldedDepthM": 0.125,
+			"foldedHeightM": 0.024
+		}
+	]
+}

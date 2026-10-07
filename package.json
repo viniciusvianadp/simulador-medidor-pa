@@ -11,6 +11,7 @@
 		"dev": "vite",
 		"build": "vite build",
 		"generate": "babylonjs-editor-cli pack",
+		"cuffs:generate": "node scripts/generate-cuffs.mjs",
 		"room:generate": "node scripts/generate-clinical-room.mjs",
 		"serve": "vite preview"
 	},

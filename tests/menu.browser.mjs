@@ -68,9 +68,33 @@ try {
 	assert.equal(await evaluate("document.activeElement.id"), "session-title");
 	assert.equal(await evaluate("testApp._scene.metadata.clinicalRoom.units"), "meters");
 	assert.equal(await evaluate("!!testApp._scene.getMeshByName('patient-forearm-esquerdo') && !!testApp._scene.getMeshByName('patient-forearm-direito')"), true);
+	assert.equal(await evaluate("!!testApp._scene.getTransformNodeByName('patient-root')"), true);
+	assert.ok(await evaluate("testApp._scene.getMeshByName('patient_Object_2')?.getTotalVertices() > 0"));
+	assert.equal(await evaluate("testApp._scene.getMeshByName('patient_Object_2')?.metadata.logicalTarget"), "patient");
 	assert.ok(await evaluate("testApp._scene.getMeshByName('ground').getTotalVertices() > 0"));
 	assert.equal(await evaluate("testApp._scene.meshes.some(mesh => mesh.name === 'box')"), false);
 	assert.equal(await evaluate("testApp._scene.meshes.filter(mesh => mesh.getTotalVertices() === 0).length"), 0);
+	// Every storage cuff must fit its supporting tray and retain its clinical ID.
+	assert.deepEqual(await evaluate("testApp._scene.transformNodes.filter(n => n.parent?.name === 'cuff-set').map(n => n.metadata.cuffId)"),
+		["newborn", "child", "infant", "small-adult", "adult", "large-adult", "thigh"]);
+	assert.equal(await evaluate(`(() => {
+		const scene = testApp._scene;
+		const tray = scene.getMeshByName('chair_Object_8');
+		tray.computeWorldMatrix(true);
+		const surface = tray.getBoundingInfo().boundingBox;
+		const roots = scene.transformNodes.filter(n => n.parent?.name === 'cuff-set');
+		const footprints = roots.map(root => root.getHierarchyBoundingVectors(true));
+		return roots.every((root, index) => {
+			const b = footprints[index];
+			const fabric = scene.getMeshByName(root.name + '-fabric');
+			return fabric.getTotalVertices() === 466 && fabric.isPickable &&
+				fabric.metadata.cuffId === root.metadata.cuffId &&
+				b.min.x >= surface.minimumWorld.x && b.max.x <= surface.maximumWorld.x &&
+				b.min.z >= surface.minimumWorld.z && b.max.z <= surface.maximumWorld.z &&
+				Math.abs(fabric.getBoundingInfo().boundingBox.minimumWorld.y - surface.maximumWorld.y - 0.002) < 0.0001 &&
+				footprints.every((other, j) => j === index || b.max.x <= other.min.x || b.min.x >= other.max.x || b.max.z <= other.min.z || b.min.z >= other.max.z);
+		});
+	})()`), true, "Cuff geometry/tags must rest on the tray without overlapping or losing selection metadata");
 	// Exercise real keyboard navigation, then restore the learner's initial view.
 	await evaluate("window.startCameraPosition = testApp._scene.activeCamera.position.clone(); document.querySelector('#canvas').focus()");
 	await send("Input.dispatchKeyEvent", { type: "keyDown", key: "w", code: "KeyW", windowsVirtualKeyCode: 87 });
@@ -80,6 +104,11 @@ try {
 	await evaluate("testApp._scene.activeCamera.cameraDirection.setAll(0); testApp._scene.activeCamera.position.copyFrom(startCameraPosition)");
 	await evaluate("testApp._scene.activeCamera._collideWithWorld(new startCameraPosition.constructor(5, 0, 0))");
 	assert.ok(await evaluate("testApp._scene.activeCamera.position.x > 2 && testApp._scene.activeCamera.position.x < 2.13"), "Camera must stop inside the right wall");
+	await evaluate("testApp._scene.activeCamera.position.copyFrom(startCameraPosition)");
+	// Walking towards the treatment chair must stop before penetrating the chair volume.
+	await evaluate("testApp._scene.activeCamera.position.set(-1.19, 1.6, 0.0)");
+	await evaluate("testApp._scene.activeCamera._collideWithWorld(new startCameraPosition.constructor(0, 0, -1.5))");
+	assert.ok(await evaluate("testApp._scene.activeCamera.position.z > -0.85"), "Camera must collide with the chair and not walk through it");
 	await evaluate("testApp._scene.activeCamera.position.copyFrom(startCameraPosition)");
 	await evaluate("window.originalScene = testApp._scene; window.originalPosition = originalScene.getMeshByName('tray').position.clone(); testApp.dispatchSimulationEvent({type:'hand-hygiene-performed', target:'hygiene-station', value:true}); originalScene.getMeshByName('tray').position.x += 5");
 	assert.equal(await evaluate("testApp.getSimulationSnapshot().attempts.length"), 1);
