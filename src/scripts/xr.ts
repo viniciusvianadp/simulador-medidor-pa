@@ -20,10 +20,16 @@ export default class XR {
         }
 
         try {
+            const floorMeshes = [ground];
+            const officeFloor = this.scene.getMeshByName("DoctorsOffice_blinn1_0");
+            if (officeFloor) {
+                floorMeshes.push(officeFloor);
+            }
+
             const xr = await WebXRDefaultExperience.CreateAsync(
                 this.scene,
                 {
-                    floorMeshes: [ground],
+                    floorMeshes,
                 }
             );
 

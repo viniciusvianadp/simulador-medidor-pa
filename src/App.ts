@@ -13,6 +13,8 @@ import { DirectionalLight } from "@babylonjs/core/Lights/directionalLight";
 import { CreateGround } from "@babylonjs/core/Meshes/Builders/groundBuilder";
 import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder";
+import { CreateCylinder } from "@babylonjs/core/Meshes/Builders/cylinderBuilder";
+import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { HavokPlugin } from "@babylonjs/core/Physics/v2/Plugins/havokPlugin";
 import XR from "./scripts/xr";
 import { buildCuffSet } from "./scene/buildCuffSet";
@@ -84,12 +86,15 @@ import { scriptsMap } from "./scripts";
 import { SimulationController } from "./simulation/SimulationController";
 import type { InteractionEvent, ScenarioConfig, SessionState } from "./simulation/types";
 import { StartMenu } from "./ui/StartMenu";
+import { InteractionManager } from "./interaction/InteractionManager";
 
 export class App {
 	private _canvas: HTMLCanvasElement;
 	private _engine: Engine | null = null;
 	private _scene: Scene | null = null;
 	private _simulation: SimulationController | null = null;
+	private _interactionManager: InteractionManager | null = null;
+	private _simulatedOffsetMs = 0;
 	private _menu: StartMenu | null = null;
 	private _loading = false;
 	private _disposed = false;
@@ -119,10 +124,43 @@ export class App {
 		return this._simulation?.getSnapshot() ?? null;
 	}
 
+	public getCurrentSimulationAction() {
+		return this._simulation?.getCurrentAction() ?? null;
+	}
+
+	public advanceSimulatedTime(ms: number): void {
+		this._simulatedOffsetMs += ms;
+	}
+
+	public getSimulatedTime(): number {
+		return performance.now() + this._simulatedOffsetMs;
+	}
+
+	public getInteractionManager(): InteractionManager | null {
+		return this._interactionManager;
+	}
+
 	// Future scene adapters submit validated interactions through this entry point.
 	public dispatchSimulationEvent(event: InteractionEvent) {
 		if (this._loading || !this._simulation) return null;
-		return this._simulation.dispatch(event);
+		const result = this._simulation.dispatch(event);
+		if (result && result.accepted) {
+			this._interactionManager?.refreshGuidance();
+		}
+		return result;
+	}
+
+	public dispatchLateralDialogue(topicId: "identify-patient" | "check-readiness" | "explain-and-rest" | "inform-patient") {
+		if (this._loading || !this._simulation) return null;
+		const result = this._simulation.dispatchLateralDialogue(topicId);
+		if (result && result.accepted) {
+			this._interactionManager?.refreshGuidance();
+		}
+		return result;
+	}
+
+	public getCommunicationEvaluation() {
+		return this._simulation?.getCommunicationEvaluation() ?? [];
 	}
 
 	public async startSimulation(config: ScenarioConfig): Promise<void> {
@@ -130,7 +168,8 @@ export class App {
 		this._loading = true;
 		this._clearSession();
 		try {
-			const simulation = new SimulationController(config);
+			this._simulatedOffsetMs = 0;
+			const simulation = new SimulationController(config, () => this.getSimulatedTime(), true);
 			if (!this._engine) {
 				this._engine = new Engine(this._canvas, true, {
 					stencil: true, antialias: true, audioEngine: true,
@@ -143,6 +182,7 @@ export class App {
 			await this._handleLoad();
 			if (this._disposed) throw new Error("A aplicação foi encerrada.");
 			this._simulation = simulation;
+			this._interactionManager = new InteractionManager(this._scene, this);
 			this._engine.runRenderLoop(() => { this._scene?.render(); });
 			// The menu reveals the canvas after this promise settles.
 			requestAnimationFrame(this._handleResize);
@@ -167,6 +207,9 @@ export class App {
 
 	private _clearSession(): void {
 		this._engine?.stopRenderLoop();
+		this._interactionManager?.dispose();
+		this._interactionManager = null;
+		this._simulatedOffsetMs = 0;
 		this._scene?.dispose();
 		this._scene = null;
 		this._simulation = null;
@@ -423,15 +466,40 @@ export class App {
 		tray.material = trayMat;
 		tray.isPickable = true;
 
-		const armL = CreateSphere("patient-forearm-esquerdo", { diameter: 0.1 }, scene);
+		const armL = CreateSphere("patient-forearm-esquerdo", { diameter: 0.15 }, scene);
 		armL.position.set(-0.85, 0.85, -0.95);
 		armL.visibility = 0;
-		armL.isPickable = false;
+		armL.isPickable = true;
+		armL.metadata = { assetId: "patient-forearm-esquerdo", logicalTarget: "patient-arm", arm: "esquerdo" };
 
-		const armR = CreateSphere("patient-forearm-direito", { diameter: 0.1 }, scene);
+		const armR = CreateSphere("patient-forearm-direito", { diameter: 0.15 }, scene);
 		armR.position.set(-0.98, 1.085, -1.50);
 		armR.visibility = 0;
-		armR.isPickable = false;
+		armR.isPickable = true;
+		armR.metadata = { assetId: "patient-forearm-direito", logicalTarget: "patient-arm", arm: "direito" };
+
+		const wristR = CreateSphere("patient-wrist-direito", { diameter: 0.12 }, scene);
+		wristR.position.set(-0.98, 1.085, -1.72);
+		wristR.visibility = 0;
+		wristR.isPickable = true;
+		wristR.metadata = { assetId: "patient-wrist-direito", logicalTarget: "patient-wrist", arm: "direito" };
+
+		// Pre-fitted cuff sleeve on patient's right arm (baseline clinical setup)
+		const cuffSleeve = CreateCylinder("fitted-cuff-sleeve", {
+			height: 0.14,
+			diameter: 0.165,
+			tessellation: 24,
+		}, scene);
+		cuffSleeve.position.set(-0.98, 1.085, -1.38);
+		cuffSleeve.rotation.x = Math.PI / 2;
+		cuffSleeve.isPickable = true;
+		cuffSleeve.checkCollisions = true;
+		cuffSleeve.metadata = { assetId: "fitted-cuff-sleeve", logicalTarget: "cuff" };
+
+		const cuffMat = new StandardMaterial("fitted-cuff-material", scene);
+		cuffMat.diffuseColor = Color3.FromHexString("#1B4965");
+		cuffMat.specularColor = new Color3(0.2, 0.2, 0.2);
+		cuffSleeve.material = cuffMat;
 
 		// Camera placed in the center of the doctor's office
 		const camera = new UniversalCamera("clinical-camera", new Vector3(0, 1.6, 0.5), scene);
@@ -468,7 +536,8 @@ export class App {
 				units: "meters",
 				status: "glb-room",
 				anchors: [
-					{ name: "hygiene-station", position: [0.792, 1.272, -2.391], logicalTarget: "hygiene-station" },
+					{ name: "hygiene-station", position: [-2.04, desktopY + 0.12, -0.62], logicalTarget: "hygiene-station" },
+					{ name: "soap-dispenser", position: [0.792, 1.272, -2.391], logicalTarget: "hygiene-station" },
 					{ name: "record", position: [-0.072, 0.88, -1.824], logicalTarget: "record" },
 					{ name: "table", position: [-2.04, desktopY, -0.96], logicalTarget: "table" },
 					{ name: "treatment-chair", position: [-1.00, 0.72, -1.10], logicalTarget: "patient" },
@@ -476,6 +545,9 @@ export class App {
 					{ name: "sphygmomanometer", position: [-2.04, trayTopY, -0.88], logicalTarget: "gauge" },
 					{ name: "sanitizer", position: [-2.04, desktopY, -0.62], logicalTarget: "hygiene-station" },
 					{ name: "stethoscope", position: [-2.04, trayTopY, -1.17], logicalTarget: "stethoscope" },
+					{ name: "patient-arm", position: [-0.98, 1.085, -1.50], logicalTarget: "patient-arm" },
+					{ name: "patient-wrist", position: [-0.98, 1.085, -1.72], logicalTarget: "patient-wrist" },
+					{ name: "cuffs", position: [-1.15, 0.85, -1.75], logicalTarget: "cuffs" },
 				],
 			},
 			scripts: [{ enabled: true, key: "scripts/xr.ts", _id: "clinical-room-xr", debugOnly: false }],

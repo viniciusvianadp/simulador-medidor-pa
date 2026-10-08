@@ -62,6 +62,17 @@ export interface Attempt {
 	feedback: string;
 }
 
+export type CommunicationTiming = "ideal" | "late" | "early" | "omitted";
+
+export interface CommunicationRecord {
+	stepId: string;
+	title: string;
+	status: "completed" | "omitted";
+	timing: CommunicationTiming;
+	physicalStepAtExecution: string | null;
+	feedback: string;
+}
+
 export interface SessionState {
 	config: ScenarioConfig;
 	currentStepId: string | null;
@@ -72,4 +83,5 @@ export interface SessionState {
 	timerStartedAt: number | null;
 	attempts: Attempt[];
 	completed: boolean;
+	communicationRecords?: Record<string, CommunicationRecord>;
 }

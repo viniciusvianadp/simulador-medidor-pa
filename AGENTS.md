@@ -2,7 +2,7 @@
 
 ## Simulation Scope & References
 
-Build a Portuguese-language **“Simulador de medição de pressão arterial”**, initially covering the auscultatory method. Implement a guided, multi-step simulation based on the supplied PDF checklist. Follow [the implementation plan](references/IMPLEMENTATION_PLAN.md) for the ordered workflow and visual references: `Start_menu.png` for menu organization, `example_hands_and_step.png` for visible hands and next-step arrows, and `example_room.png` for the clinical environment. Use a chair for the patient instead of the reference bed. Adapt the menu to this scenario and project identity. Documentation may remain in English; user-facing instructions and feedback must be in Portuguese.
+Build a Portuguese-language **“Simulador de medição de pressão arterial”**, initially covering the auscultatory method. Implement a guided simulation based on the supplied PDF checklist. Follow [the implementation plan](references/IMPLEMENTATION_PLAN.md) for the workflow and visual references: `Start_menu.png` for menu organization, `example_hands_and_step.png` for visible hands and next-step arrows, and `example_room.png` for the clinical environment. The patient is pre-seated on the examination chair with arm at heart level, and the cuff is pre-fitted. Conversational and anamnese tasks are non-blocking, accessible via a lateral interaction trigger with timing evaluated for debriefing feedback. Adapt the menu to this scenario and project identity. Documentation may remain in English; user-facing instructions and feedback must be in Portuguese.
 
 ## Project Structure & Module Organization
 

@@ -1,13 +1,28 @@
 import { auscultatoryScenario, defaultConfig } from "./auscultatoryScenario.js";
 import { clinicalParameters as parameters, eligibleCuffs, requiredMaterials } from "./clinicalParameters.js";
-import type { ActionDefinition, InteractionEvent, MeasurementRecord, ScenarioConfig, SessionState } from "./types.js";
+import type { ActionDefinition, CommunicationRecord, CommunicationTiming, InteractionEvent, MeasurementRecord, ScenarioConfig, SessionState } from "./types.js";
+
+export const CONVERSATION_STEP_IDS = [
+	"identify-patient",
+	"check-readiness",
+	"explain-and-rest",
+	"inform-patient",
+];
+
+export const PRE_ESTABLISHED_STEP_IDS = [
+	"measure-arm-and-select-cuff",
+	"position-patient",
+	"align-cuff",
+	"fit-cuff",
+];
 
 export class SimulationController {
 	private _state!: SessionState;
 	private _initialConfig: ScenarioConfig;
 	private _clock: () => number;
+	private _decoupledFlow: boolean;
 
-	public constructor(config: ScenarioConfig = defaultConfig, clock: () => number = () => performance.now()) {
+	public constructor(config: ScenarioConfig = defaultConfig, clock: () => number = () => performance.now(), decoupledFlow = false) {
 		if (!Number.isFinite(config.pressure.systolic) || !Number.isFinite(config.pressure.diastolic)
 			|| config.pressure.systolic <= config.pressure.diastolic || config.pressure.diastolic < parameters.confirmation.minDrop
 			|| eligibleCuffs(config.patient.armCircumferenceCm).length === 0 || !config.patient.name.trim() || !config.patient.dateOfBirth.trim()) {
@@ -15,6 +30,7 @@ export class SimulationController {
 		}
 		this._initialConfig = structuredClone(config);
 		this._clock = clock;
+		this._decoupledFlow = decoupledFlow;
 		this.restart();
 	}
 
@@ -24,10 +40,46 @@ export class SimulationController {
 			actionIndex: 0, steps: Object.fromEntries(auscultatoryScenario.map((step, index) => [step.id, { status: index === 0 ? "active" : "pending" }])),
 			observations: {}, instruments: { cuffPressure: 0, cuffAttached: false, selectedCuff: null },
 			timerStartedAt: null, attempts: [], completed: false,
+			communicationRecords: {
+				"identify-patient": {
+					stepId: "identify-patient",
+					title: "Identificação do paciente (Passo 5)",
+					status: "omitted",
+					timing: "omitted",
+					physicalStepAtExecution: null,
+					feedback: "Identificação do paciente não foi realizada (risco de erro de paciente).",
+				},
+				"check-readiness": {
+					stepId: "check-readiness",
+					title: "Condições de preparo / Anamnese (Passo 6)",
+					status: "omitted",
+					timing: "omitted",
+					physicalStepAtExecution: null,
+					feedback: "Condições prévias de preparo (bexiga vazia, repouso físico e ingestão) não foram checadas.",
+				},
+				"explain-and-rest": {
+					stepId: "explain-and-rest",
+					title: "Orientações e repouso de 5 min (Passo 7)",
+					status: "omitted",
+					timing: "omitted",
+					physicalStepAtExecution: null,
+					feedback: "Orientações do procedimento e repouso de 5 minutos não foram cumpridos antes da medição.",
+				},
+				"inform-patient": {
+					stepId: "inform-patient",
+					title: "Comunicação de resultados (Passo 23)",
+					status: "omitted",
+					timing: "omitted",
+					physicalStepAtExecution: null,
+					feedback: "Valores pressóricos aferidos não foram comunicados ao paciente.",
+				},
+			},
 		};
 	}
 
 	public getSnapshot(): SessionState { return structuredClone(this._state); }
+
+	public isDecoupledFlow(): boolean { return this._decoupledFlow; }
 
 	public getCurrentAction(): ActionDefinition | null {
 		const step = auscultatoryScenario.find(item => item.id === this._state.currentStepId);
@@ -39,7 +91,12 @@ export class SimulationController {
 		const step = auscultatoryScenario.find(item => item.id === state.currentStepId);
 		const action = this.getCurrentAction();
 		const now = this._clock();
-		const prerequisitesMet = step?.prerequisites.every(id => ["completed", "skipped"].includes(state.steps[id].status));
+		const prerequisitesMet = step?.prerequisites.every(id => {
+			if (this._decoupledFlow && CONVERSATION_STEP_IDS.includes(id)) {
+				return true;
+			}
+			return ["completed", "skipped"].includes(state.steps[id].status);
+		});
 		const accepted = !!action && !!prerequisitesMet && event.type === action.type && event.target === action.target && this._validate(action, event, now);
 		const feedback = accepted ? "Ação realizada corretamente." : action?.feedback ?? "A simulação já foi concluída. Reinicie para tentar novamente.";
 		state.attempts.push({ timestamp: now, stepId: state.currentStepId, event: structuredClone(event), accepted, feedback });
@@ -59,6 +116,143 @@ export class SimulationController {
 		state.actionIndex++;
 		if (state.actionIndex === step.completionConditions.length) this._completeStep(step.checklistNumber);
 		return { accepted, feedback };
+	}
+
+	public dispatchLateralDialogue(topicId: "identify-patient" | "check-readiness" | "explain-and-rest" | "inform-patient"): { accepted: boolean; feedback: string; dialogueText: string } {
+		const state = this._state;
+		const config = state.config;
+		const currentPhysicalStep = state.currentStepId;
+
+		if (topicId === "identify-patient") {
+			state.observations["identify-patient:introduced-self"] = true;
+			state.observations["identify-patient:name-confirmed"] = config.patient.name;
+			state.observations["identify-patient:birth-date-confirmed"] = config.patient.dateOfBirth;
+			state.steps["identify-patient"].status = "completed";
+
+			const isIdeal = ["initial-hand-hygiene", "disinfect-stethoscope", "prepare-materials", "hand-hygiene-before-identification", "hand-hygiene-before-measurement"].includes(currentPhysicalStep ?? "");
+			const timing: CommunicationTiming = isIdeal ? "ideal" : "late";
+			const feedback = isIdeal
+				? "Identificação confirmada no momento ideal (antes dos procedimentos no paciente)."
+				: "Identificação realizada tardiamente (após início dos procedimentos).";
+
+			if (state.communicationRecords) {
+				state.communicationRecords["identify-patient"] = {
+					stepId: "identify-patient",
+					title: "Identificação do paciente (Passo 5)",
+					status: "completed",
+					timing,
+					physicalStepAtExecution: currentPhysicalStep,
+					feedback,
+				};
+			}
+
+			const dialogueText = `Olá enfermeiro(a), meu nome é ${config.patient.name} e nasci em ${config.patient.dateOfBirth}.`;
+			return { accepted: true, feedback, dialogueText };
+		}
+
+		if (topicId === "check-readiness") {
+			state.observations["check-readiness:bladder-checked"] = "empty";
+			state.observations["check-readiness:exercise-history-checked"] = 90;
+			state.observations["check-readiness:intake-history-checked"] = 30;
+			state.steps["check-readiness"].status = "completed";
+
+			const measurementSteps = [
+				"estimate-systolic", "place-earpieces", "place-bell", "inflate-for-auscultation",
+				"start-deflation", "identify-systolic", "identify-diastolic", "confirm-disappearance",
+				"persistent-sounds", "inform-patient", "remove-cuff", "final-hand-hygiene", "document-measurement",
+			];
+			const isIdeal = !measurementSteps.includes(currentPhysicalStep ?? "");
+			const timing: CommunicationTiming = isIdeal ? "ideal" : "late";
+			const feedback = isIdeal
+				? "Condições de preparo (bexiga, exercício ≥90 min, ingestão ≥30 min) checadas no momento ideal."
+				: "Condições de preparo checadas tardiamente (após iniciar medição).";
+
+			if (state.communicationRecords) {
+				state.communicationRecords["check-readiness"] = {
+					stepId: "check-readiness",
+					title: "Condições de preparo / Anamnese (Passo 6)",
+					status: "completed",
+					timing,
+					physicalStepAtExecution: currentPhysicalStep,
+					feedback,
+				};
+			}
+
+			const dialogueText = "Minha bexiga está vazia, não pratiquei exercícios nas últimas 2 horas e não consumi café, álcool ou tabaco recentemente.";
+			return { accepted: true, feedback, dialogueText };
+		}
+
+		if (topicId === "explain-and-rest") {
+			state.observations["explain-and-rest:procedure-explained"] = true;
+			state.observations["explain-and-rest:silence-instructed"] = true;
+			state.observations["explain-and-rest:questions-addressed"] = true;
+			state.observations["explain-and-rest:quiet-rest-started"] = true;
+			state.observations["explain-and-rest:quiet-rest-finished"] = true;
+			state.steps["explain-and-rest"].status = "completed";
+
+			const measurementSteps = [
+				"estimate-systolic", "place-earpieces", "place-bell", "inflate-for-auscultation",
+				"start-deflation", "identify-systolic", "identify-diastolic", "confirm-disappearance",
+				"persistent-sounds", "inform-patient", "remove-cuff", "final-hand-hygiene", "document-measurement",
+			];
+			const isIdeal = !measurementSteps.includes(currentPhysicalStep ?? "");
+			const timing: CommunicationTiming = isIdeal ? "ideal" : "late";
+			const feedback = isIdeal
+				? "Orientações explicadas e repouso de 5 minutos cumprido antes da medição."
+				: "Orientações e repouso realizados tardiamente (após início da medição).";
+
+			if (state.communicationRecords) {
+				state.communicationRecords["explain-and-rest"] = {
+					stepId: "explain-and-rest",
+					title: "Orientações e repouso de 5 min (Passo 7)",
+					status: "completed",
+					timing,
+					physicalStepAtExecution: currentPhysicalStep,
+					feedback,
+				};
+			}
+
+			const dialogueText = "Entendido! Manterei repouso calmo e ficarei em silêncio durante todo o exame.";
+			return { accepted: true, feedback, dialogueText };
+		}
+
+		if (topicId === "inform-patient") {
+			state.observations["inform-patient:results-communicated"] = true;
+			state.steps["inform-patient"].status = "completed";
+
+			const auscultationDone = state.steps["confirm-disappearance"].status === "completed"
+				|| state.steps["persistent-sounds"].status === "completed";
+			const timing: CommunicationTiming = auscultationDone ? "ideal" : "early";
+			const feedback = auscultationDone
+				? "Valores informados no momento ideal (após a conclusão da ausculta)."
+				: "Valores informados precocemente (antes do término da ausculta).";
+
+			if (state.communicationRecords) {
+				state.communicationRecords["inform-patient"] = {
+					stepId: "inform-patient",
+					title: "Comunicação de resultados (Passo 23)",
+					status: "completed",
+					timing,
+					physicalStepAtExecution: currentPhysicalStep,
+					feedback,
+				};
+			}
+
+			const zeroPart = config.persistentSounds ? " (sons persistentes até zero)" : "";
+			const dialogueText = `Muito obrigado por me informar minha pressão (${config.pressure.systolic}/${config.pressure.diastolic} mmHg${zeroPart}) e pelas orientações!`;
+			return { accepted: true, feedback, dialogueText };
+		}
+
+		return { accepted: false, feedback: "Tópico de diálogo desconhecido.", dialogueText: "" };
+	}
+
+	public getCommunicationEvaluation(): CommunicationRecord[] {
+		if (!this._state.communicationRecords) return [];
+		return Object.values(this._state.communicationRecords);
+	}
+
+	public applyPreEstablishedSetup(): void {
+		this._applyPreEstablishedSetup();
 	}
 
 	private _estimate(): number {
@@ -118,16 +312,56 @@ export class SimulationController {
 		const state = this._state;
 		state.steps[auscultatoryScenario[number - 1].id].status = "completed";
 		let nextIndex = number;
-		if (number === 19 && state.config.persistentSounds) {
-			for (const index of [19, 20]) state.steps[auscultatoryScenario[index].id] = { status: "skipped", reason: "Os sons persistem até zero; utilizar o abafamento e registrar três valores." };
-			nextIndex = 21;
-		} else if (number === 21) {
-			state.steps[auscultatoryScenario[21].id] = { status: "skipped", reason: "Os sons desapareceram antes de zero." };
-			nextIndex = 22;
+
+		if (this._decoupledFlow) {
+			if (number === 4) {
+				// From step 4 (hand-hygiene-before-identification), advance directly to step 8 (hand-hygiene-before-measurement)
+				nextIndex = 7;
+			} else if (number === 8) {
+				// From step 8 (hand-hygiene-before-measurement), pre-established setup satisfies steps 9-12
+				this._applyPreEstablishedSetup();
+				nextIndex = 12; // step 13 (align-gauge)
+			} else if (number === 19 && state.config.persistentSounds) {
+				for (const index of [19, 20]) state.steps[auscultatoryScenario[index].id] = { status: "skipped", reason: "Os sons persistem até zero; utilizar o abafamento e registrar três valores." };
+				nextIndex = 21; // step 22 (persistent-sounds)
+			} else if (number === 21) {
+				state.steps[auscultatoryScenario[21].id] = { status: "skipped", reason: "Os sons desapareceram antes de zero." };
+				nextIndex = 23; // step 24 (remove-cuff)
+			} else if (number === 22) {
+				nextIndex = 23; // step 24 (remove-cuff)
+			}
+		} else {
+			if (number === 19 && state.config.persistentSounds) {
+				for (const index of [19, 20]) state.steps[auscultatoryScenario[index].id] = { status: "skipped", reason: "Os sons persistem até zero; utilizar o abafamento e registrar três valores." };
+				nextIndex = 21;
+			} else if (number === 21) {
+				state.steps[auscultatoryScenario[21].id] = { status: "skipped", reason: "Os sons desapareceram antes de zero." };
+				nextIndex = 22;
+			}
 		}
+
 		state.actionIndex = 0;
 		state.currentStepId = auscultatoryScenario[nextIndex]?.id ?? null;
 		state.completed = state.currentStepId === null;
 		if (state.currentStepId) state.steps[state.currentStepId].status = "active";
+	}
+
+	private _applyPreEstablishedSetup(): void {
+		const state = this._state;
+		state.steps["measure-arm-and-select-cuff"].status = "completed";
+		state.steps["position-patient"].status = "completed";
+		state.steps["align-cuff"].status = "completed";
+		state.steps["fit-cuff"].status = "completed";
+
+		const cuff = eligibleCuffs(state.config.patient.armCircumferenceCm)[0] ?? "adult";
+		state.instruments.selectedCuff = cuff;
+		state.instruments.cuffAttached = true;
+
+		state.observations["measure-arm-and-select-cuff:circumference-measured"] = state.config.patient.armCircumferenceCm;
+		state.observations["measure-arm-and-select-cuff:cuff-selected"] = cuff;
+		state.observations["position-patient:seated"] = true;
+		state.observations["align-cuff:bladder-aligned"] = true;
+		state.observations["fit-cuff:cuff-fitted"] = true;
+		state.observations["fit-cuff:cuff-offset-measured"] = 2.5;
 	}
 }

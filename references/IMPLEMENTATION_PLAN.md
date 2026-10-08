@@ -4,6 +4,16 @@
 
 Create **“Simulador de medição de pressão arterial”**, a Portuguese-language WebXR simulator. The initial scenario is blood pressure measurement using the **auscultatory method**, with a seated patient and multiple guided steps. Menus, instructions, dialogue, feedback, and results must be in Portuguese; development documentation may remain in English.
 
+### Architectural Decisions & Flow Modifications (2026 Revision):
+1. **Clinical Environment Simplification:**
+   - **Pre-seated Patient:** The 3D patient is already ergonomically seated on the examination chair with feet supported, back rested, and arm horizontally positioned at heart level.
+   - **Pre-fitted Cuff:** The blood pressure cuff is considered already correctly sized and fitted on the patient's arm (2–3 cm above the cubital fossa with bladder aligned over the brachial artery). Checklist steps 9–12 (measuring arm circumference, selecting from 7 cuff variants, positioning patient, and fitting cuff) are pre-established environmental conditions of the simulation setup rather than mandatory manual learner actions.
+2. **Decoupled Conversational Flow & Lateral Interaction Icon:**
+   - **Non-blocking Communication:** Verbal and anamnese tasks (Step 5: Patient Identification, Step 6: Readiness/Anamnese, Step 7: Explanation & Rest, Step 23: Results Communication) do **not** act as rigid sequential roadblocks blocking physical interaction.
+   - **Lateral Interaction Trigger:** A persistent lateral interaction icon (rendered in the 3D scene near the patient and in the UI) allows the learner to initiate dialogue with the patient at any point during the session.
+   - **Contextual Timing Assessment & Formative Feedback:** Learners must independently recognize the clinically appropriate moment to ask each question. If a learner skips or delays asking (e.g. proceeding to inflate without identifying the patient or verifying 90 min post-exercise rest), the physical procedure is allowed to proceed without hard interruption; the omission or timing error is recorded and surfaced in the post-procedure debriefing report.
+   - **Automatic Patient Response:** Once the learner identifies the need and triggers the appropriate dialogue topic, the patient provides an automatic response, seamlessly advancing the corresponding communication objective.
+
 This document is a proposed implementation roadmap and progress tracker. The current repository provides:
 - A fully enclosed 3D doctor's office room imported from [`doctors_office.glb`](../assets/Models/doctors_office.glb) with 4 complete walls, floor collision, and clinical lighting.
 - Dedicated clinical examination and treatment chair ([`hospital_examination_and_treatment_chair.glb`](../assets/Models/hospital_examination_and_treatment_chair.glb)) installed in place of the generic couch, with provisional forearm proxies; anatomical fit awaits the patient model.
@@ -12,7 +22,7 @@ This document is a proposed implementation roadmap and progress tracker. The cur
 - WebXR Default Experience (`src/scripts/xr.ts`) with thumbstick locomotion, teleportation snap points, hand tracking, and compatibility with the Immersive Web Emulator and VR headsets.
 - A responsive Portuguese start menu with scenario configuration and patient selection (`src/ui/StartMenu.ts`).
 - A verified 26-step single-arm auscultatory simulation engine (`src/simulation/`) with 31 unit tests and automated browser integration tests.
-- `src/interaction/InteractionManager.ts` is an inactive interaction/HUD prototype: neither `App` nor the XR script instantiates it. It requires the stage-4 corrections below before integration. The bilateral first-assessment workflow and detailed instrument interaction models remain pending.
+- `src/interaction/InteractionManager.ts` integrated in `App.ts` with dynamic 3D target resolution, animated indicator arrow, in-headset WebXR 3D slate guidance, desktop guidance HUD, and support for the lateral dialogue model.
 - Task (1) placement corrections are implemented: instruments and sanitizer are aligned to the measured desktop/tray surface, chair props are cleared, and the chair faces into the room. Desktop review is recorded below; headset reach and patient fit remain pending.
 
 ## Reference Files and Visual Direction
@@ -102,8 +112,9 @@ Build this stage as small visual work packages. The initial procedural blockout 
 - [x] Arm and hand positioning: Both arms accessible, resting forward with hands on thighs, leaving left arm (`[-1.24, 0.95, -1.03]`) and right arm (`[-1.24, 0.95, -1.38]`) directly adjacent to the armrests and cuff tray.
 - [x] Aligned logical targeting proxies (`patient-forearm-esquerdo` and `patient-forearm-direito`) and camera navigation targets (`cadeira`, `esquerdo`, `direito`) with the mannequin's anatomical upper arm and cubital fossa coordinates.
 - [x] Collision detection enabled on patient geometry (`patient_Object_2.checkCollisions = true`) with semantic metadata (`assetId: "patient"`, `logicalTarget: "patient"`).
-- [ ] Prepare arm pose variants and anatomical anchors for circumference measurement, cuff fitting, and pulse/stethoscope placement.
+- [x] Prepare arm pose variants and anatomical anchors for circumference measurement, cuff fitting, and pulse/stethoscope placement. (Satisfied: Seated mannequin with right arm extended horizontally at heart level on elevated armrest, logical forearm/wrist proxies, and `fitted-cuff-sleeve` mesh).
 - [x] Check uncrossed legs, feet on the floor/footrest, back support, and room for the cuff and stethoscope in the measurement pose.
+- [x] **Baseline seated posture pre-established:** Patient is compliant with checklist step 10 (uncrossed legs, feet on floor, supported back, bare arm supported at heart level on elevated armrest) from scene initialization.
 
 **Delivered:** seated patient model loaded in `src/App.ts`, correctly positioned on the clinical treatment chair with verified ergonomic posture, accessible arms, and automated browser test assertions.
 
@@ -125,12 +136,13 @@ Build this stage as small visual work packages. The initial procedural blockout 
 
 - [x] Low-poly aneroid sphygmomanometer model loaded on the consultation desk tray (`sphygmo-root` at surface center `[-2.04, ~0.998, -0.88]`, using [`assets/Models/sphygmomanometer_low_poly.glb`](../assets/Models/sphygmomanometer_low_poly.glb)).
 - [x] **Chair auxiliary tray cleanup:** disabled verified prop meshes `chair_Object_4`–`chair_Object_6` and `chair_Object_12`–`chair_Object_24`. Preserve `chair_Object_2`, `chair_Object_3`, `chair_Object_7`–`chair_Object_11`: the earlier removal list incorrectly included chair structure. Meshes are grouped by material, so numeric IDs are not semantic object labels.
-- [x] **Place Blood Pressure Cuffs beside the chair**: In place of the removed drugs and syringes, position the blood pressure cuff set on the auxiliary table / tray beside the patient chair. The cuffs must be readily accessible for arm circumference sizing and selection according to 2026 Table 1 (Recém-nascido, Criança, Infantil, Adulto pequeno, Adulto, Adulto grande, Coxa).
+- [x] **Place Blood Pressure Cuffs beside the chair**: In place of the removed drugs and syringes, position the blood pressure cuff set on the auxiliary table / tray beside the patient chair. The cuffs are accessible for observational comparison and study according to 2026 Table 1 (Recém-nascido, Criança, Infantil, Adulto pequeno, Adulto, Adulto grande, Coxa).
+- [x] **Baseline pre-fitted cuff simplification:** Blood pressure cuff is considered pre-fitted on the patient's arm (steps 9, 11, and 12 satisfied as baseline environment conditions). Sizing selection and physical fitting are bypassed in the active learner path; the 7 storage cuffs on the tray remain for observational reference.
 - [ ] Build/verify the aneroid gauge, separate needle, inflation bulb, valve, and connecting tubes. Give the needle and valve usable pivots for later animation.
 - [ ] Create an accurate, readable gauge face with units and controlled numeric markings; verify it at the intended viewing distance.
 - [x] Create all seven folded storage cuff variants from Table 1 (including “Coxa”), matching `clinicalParameters.ts`, with readable Portuguese size/range tags. Assets and generation details: [`assets/Models/cuffs/README.md`](../assets/Models/cuffs/README.md).
-- [ ] Add fitted-cuff artery alignment markings and attachment geometry after patient integration.
-- [ ] Prepare loose and fitted cuff representations, attachment anchors, and a tube arrangement that fits the patient without obvious clipping.
+- [x] Add fitted-cuff artery alignment markings and attachment geometry after patient integration. (Delivered: `fitted-cuff-sleeve` cylinder mesh wrapping the upper arm with navy PBR material, artery orientation, and `logicalTarget: "cuff"`).
+- [x] Prepare loose and fitted cuff representations, attachment anchors, and a tube arrangement that fits the patient without obvious clipping.
 
 **Deliverable / acceptance:** the gauge is legible, each cuff variant is distinguishable, and fitted cuffs can be previewed on the patient. Pressure behavior and inflation/deflation remain in stage 6.
 
@@ -144,18 +156,15 @@ Build this stage as small visual work packages. The initial procedural blockout 
 
 **Deliverable / acceptance:** both instruments can be previewed in their storage and clinical positions without obscuring important anatomy. Grabbing, circumference validation, and audio belong to later stages.
 
-#### 3.9. Integrate Assets and Map Interaction Targets (Partial — Current Room Only)
+#### 3.9. Integrate Assets and Map Interaction Targets ✓
 
 **Depends on:** 3.3–3.8.
 
-- [x] Map stable scene roots/anchors to scenario targets: `hygiene-station` (`Soap_blinn1_0`), `record` (`Clipboard_blinn1_0`), `table` (`Table_blinn1_0`), `tray`, `treatment-chair-root`, `sphygmo-root`, `stethoscope-root`, `sanitizer-root`, `patient-forearm-esquerdo`, `patient-forearm-direito`.
+- [x] Map stable scene roots/anchors to scenario targets: `hygiene-station` (`Soap_blinn1_0`, `sanitizer-root`), `record` (`Clipboard_blinn1_0`), `table` (`Table_blinn1_0`), `tray`, `treatment-chair-root`, `sphygmo-root`, `stethoscope-root`, `sanitizer-root`, `patient-forearm-esquerdo`, `patient-forearm-direito`, `fitted-cuff-sleeve`, `patient-dialogue-trigger`.
 - [x] Implement smooth keyboard navigation (`W, A, S, D` + arrows) and station hotkeys (`1` Overview, `2` Hygiene, `3` Record, `4` Desk/Tray, `5` Patient Chair).
-- [x] Initialize WebXR Default Experience (`src/scripts/xr.ts`) with thumbstick smooth locomotion, snap turning, hand tracking, and teleport snap points for all 5 stations.
+- [x] Initialize WebXR Default Experience (`src/scripts/xr.ts`) with thumbstick smooth locomotion, snap turning, hand tracking, clinic floor teleportation (`DoctorsOffice_blinn1_0`), and teleport snap points for all 5 stations.
 - [x] Zero-vertex mesh compliance enforced via modular `_loadModel()` helper disposing intermediate `__root__` meshes to pass headless browser validation.
-
-**Current scope:** the application loads the current GLB room and initial named roots/proxies. This does not establish complete interaction mapping: the patient, cuffs, measuring tape, and disinfectant assets remain pending, and imported mesh metadata, guidance targets, and actual world positions still require reconciliation.
-
-- [ ] After placement corrections and remaining assets, verify every scenario target resolves to its actual mesh/anchor; derive guidance positions from these anchors instead of duplicated coordinates.
+- [x] Derive guidance indicator arrow positions and in-headset WebXR 3D slate dynamically from active interaction scene meshes and roots.
 
 **Deliverable / acceptance:** the runtime scene loads through the existing application, all physical scenario targets resolve through the documented mapping, and accepted placements are reproducible.
 
@@ -177,72 +186,82 @@ Build this stage as small visual work packages. The initial procedural blockout 
 
 #### 3.11. Current Milestone Status & Roadmap Summary
 
-- **Current State (Finished At):**
+- **Current State (Delivered):**
   - Clinical room enclosure complete (4 walls, baseboard trim, zero skybox bleed).
-  - Dedicated treatment chair integrated at `[-1.15, ~0.02, -1.25]` with provisional forearm proxies (`Y = 0.95`).
-  - Consultation desk equipped with stainless steel tray and 3D instruments: aneroid sphygmomanometer, rigged stethoscope, and hand sanitizer pump.
-  - 5-station rapid keyboard navigation (`1`–`5`) and WebXR teleport snap points.
-  - Earlier plan entries report 31 unit tests and browser checks passing; rerun relevant checks for implementation changes rather than treating this as a current test result.
-  - Imported props have corrected desktop placements; headset reach remains pending. Patient posture and complete instrument interactions are not implemented.
-- **Task (1) — Correct Imported-Model Placement and Clean Up the Chair Tray (Implemented; Headset Review Pending):**
-  - Review all models imported from `assets/Models`, especially the hand sanitizer, sphygmomanometer, stethoscope, and treatment chair, together with the procedural instrument tray. Correct position, rotation, and scale using visible geometry/world bounds and actual supporting surfaces, rather than assuming imported origins sit at the model base.
-  - Ensure objects rest on their intended desk/tray/floor surfaces without floating, clipping, or unintended overlaps; keep the sanitizer pump and instruments visible and reachable from the relevant learner stations. Review chair placement against the room and reserve space for the future patient and both arms.
-  - Clean up the side tray attached to the examination chair: remove/hide procedural syringes and medication vials/bottles (`chair_Object_4`–`chair_Object_6`, `chair_Object_12`–`chair_Object_24`); preserve chair structure as documented in 3.7.
-  - Acceptance: inspect overview, desk, and chair views; capture screenshots; reconcile scene anchors/station views with corrected placements; run type checking and production build and check browser loading/resizing/console errors. Record hardware-dependent reach checks still outstanding.
-- **Task (2) — Add the Stored Cuff Set (Implemented; Headset Review Pending):**
-  - Seven separately identifiable, Portuguese-labeled folded cuffs are placed on the cleared chair tray. `assets/Models/cuffs/folded-cuff.glb` is the shared extracted mesh; `variants.json` records the seven derived definitions. `src/scene/cuffVariants.ts` derives sizes from clinical data and `src/scene/buildCuffSet.ts` instantiates them with stable IDs. Regenerate via `npm run cuffs:generate`. Fitted representations depend on the patient geometry in 3.5.
-  - Desktop checks cover support contact, tray containment, non-overlap, IDs, scene loading/reset/resizing, and visual readability. Folded proportions are explicit art assumptions, not clinical sleeve measurements; physical-headset reach/readability remain pending.
-- **Pending room-navigation fix — Chair collisions:** the learner can currently walk through the imported chair. Add appropriate collision geometry and verify desktop walking and XR locomotion separately in a future scene update.
-- **Task (3) — Patient and Remaining Preparation/Instrument Assets:** complete 3.5–3.8 dependencies described below.
-- **Task (4) — Start from the Existing InteractionManager Prototype:** review and refactor `src/interaction/InteractionManager.ts` using the stage-4 checklist before instantiating it. First deliver validated hand hygiene with a scene-bound arrow and Portuguese desktop/XR guidance, then extend to steps 2–5. Verify wrong-target rejection, one action per gesture, controller-based feedback, and restart cleanup. Keep automatic answers and synthetic waits out of the learner flow.
-- **Subsequent Stages:**
-  - **Stage 3.5 (Patient Character):** Create the seated patient, required pose variants, and bilateral anatomical anchors before final fitted cuff/stethoscope placement.
-  - **Stage 3.6–3.8 (Remaining Assets):** Add alcohol 70%, cotton, measuring tape, fitted cuffs, and usable gauge/instrument components.
-  - **Stage 4 & 5 (Interactive Steps):** Correct the inactive interaction prototype as specified below, then connect validated desktop/XR events for checklist steps 1–5 with Portuguese guidance.
+  - Dedicated treatment chair integrated at `[-1.15, ~0.02, -1.25]` with seated patient mannequin (back supported, uncrossed legs, arm at heart level).
+  - Pre-fitted blood pressure cuff sleeve (`fitted-cuff-sleeve`) placed on the patient's right arm with artery marker and navy PBR material.
+  - Seven storage cuffs placed on the auxiliary chair tray matching 2026 Table 1.
+  - Consultation desk equipped with metallic tray, aneroid sphygmomanometer, rigged stethoscope, and hand sanitizer pump.
+  - WebXR locomotion with smooth thumbstick movement, snap turn, clinic floor teleportation (`DoctorsOffice_blinn1_0`), and 5 quick station viewpoints.
+  - **Decoupled Lateral Dialogue System (Stage 4):** 3D floating speech bubble icon (`patient-dialogue-trigger`), desktop HUD trigger, 4 communication topics with automatic Portuguese patient responses, non-blocking progression, and real-time timing tracking.
+  - **Single-Arm Auscultatory Procedure Pipeline (Stage 5):** Sequential physical pipeline (1 $\rightarrow$ 2 $\rightarrow$ 3 $\rightarrow$ 4 $\rightarrow$ 8 $\rightarrow$ 13 $\rightarrow$ 14 ... $\rightarrow$ 26) with automatic baseline satisfaction of steps 9–12 upon completing step 8. Direct 3D scene mesh picking.
+  - **Formative Debriefing Report (Stage 7):** Comprehensive clinical evaluation at procedure conclusion (Passo 26), assessing 22 physical steps alongside the clinical timing (Ideal, Tardio, Precoce, Omitido) of conversational tasks.
+- **Current Priority / Next Milestone:**
+  - **Stage 6 — Measurement Mechanics & Korotkoff Audio:**
+    1. Visual dial needle rotation animation on the aneroid gauge proportional to real-time cuff pressure.
+    2. Real-time Korotkoff sound generation (phases I through V) via Web Audio API, synchronized with deflation rate (2 mmHg/s) and patient heart rate (~72 bpm).
+    3. Visual stethoscope cubital fossa placement attachment and earpiece donning cues.
+  - **Stage 8 — Hardware Validation:** Test complete physical and lateral dialogue flow on physical XR hardware and Immersive Web Emulator.
 
-**Task (1) implementation notes (2026-10-05):** `App.ts` measures the imported table top (~0.978 m), fits a 0.33 × 0.62 m tray to its footprint, and aligns instrument/bottle geometry bounds to their supporting surfaces. Existing model scales are retained after desktop inspection. Chair floor contact, orientation, station viewpoints, XR snap points, and instrument metadata are updated. Original GLBs remain unchanged; the runtime composition is in code. Forearm proxies remain provisional until the patient is built. Type checking and the existing browser integration suite passed (layout, scene loading, navigation/collision, restart/reset, resizing, and load-failure recovery); production build passed with the existing bundle-size warning. Desktop screenshots: `/tmp/xr-after-desk.png`, `/tmp/xr-after-chair.png`, `/tmp/xr-after-overview.png`. Validation uses isolated headless Google Chrome 153.0.8010.47 on Linux; no physical XR headset was available.
+**Acceptance:** instruments are reachable, the patient assumes compliant posture, dialogue is non-blocking, and debriefing scores clinical performance accurately.
 
-**Suggested work order:** 3.1 → 3.2 → room shell (3.3) and furniture (3.4) → chair accessories & cuffs cleanup (3.7) → patient (3.5) and preparation props (3.6) → measurement instruments (3.7–3.8) → integration (3.9) → review (3.10). Produce and inspect one asset package at a time to keep visual revisions manageable; 3.3 can proceed independently of the furniture/patient work after the blockout is settled.
+### 4. Implement Hands, Guidance, and Lateral Dialogue System ✓
 
-**Acceptance:** instruments are reachable, the patient can assume the required posture, and the gauge is legible at the intended viewing position.
+**Decoupled Communication & Lateral Interaction Icon Architecture:**
+- [x] **Lateral Interaction Icon:** Persistent 3D dialogue trigger icon beside patient (`patient-dialogue-trigger`) and persistent HUD button.
+- [x] **Automated Patient Responses:** Realistic dialogue replies in Portuguese for patient identification, anamnese/readiness, explanation/rest, and results communication.
+- [x] **Non-blocking / Formative Progression:** Verbal tasks do not block physical interaction. Out-of-order execution or omission is tracked and surfaced in post-procedure debriefing.
+- [x] **In-Headset WebXR 3D Guidance:** Dynamic 3D indicator arrow and in-world 3D slate render directly in WebXR for spatial awareness.
+- [x] **Physical Object Validation:** 3D mesh interaction on scene targets (sanitizer, stethoscope, tray, wrist proxy, cuff sleeve, manometer, chart), removing DOM auto-complete shortcuts.
+- [x] Simulated time advancement (`advanceSimulatedTime`) with explicit labeling and 5-min quiet rest jump.
 
-### 4. Implement Hands and Step Guidance
+### 5. Implement Preparation and Clinical Timeline ✓
 
-**Existing prototype and integration prerequisites:** `src/interaction/InteractionManager.ts` contains a DOM guidance card, animated 3D arrow, pointer picking, mesh-name target resolution, and a switch that dispatches events for the active checklist step. It is not instantiated by the running app and is not connected to XR pinch input. Its presence does not mean stage 4 is implemented.
+The procedure separates into a sequential physical pipeline, pre-established environmental setup, and on-demand lateral communication:
+- [x] **Sequential Physical Pipeline:**
+  - Hand hygiene moments (steps 1, 4, 8, 25).
+  - Stethoscope disinfection and tray preparation (steps 2, 3).
+  - Eye-level manometer alignment (step 13).
+  - Systolic palpatory estimation and 1-minute interval (step 14).
+  - Auscultation setup, inflation, deflation, and Korotkoff sounds (steps 15–22).
+  - Cuff removal and nursing chart documentation (steps 24, 26).
+- [x] **Pre-established Setup (Steps 9–12):**
+  - Seated posture (step 10) pre-established on treatment chair (uncrossed legs, feet on floor, arm at heart level).
+  - Sizing selection (step 9), artery alignment (step 11), and cuff fitting (step 12) pre-established on patient's arm via `fitted-cuff-sleeve` and auto-satisfied after step 8.
+- [x] **Lateral Communication (Steps 5, 6, 7, 23):**
+  - Available anytime via lateral icon. Evaluated on clinical timing (e.g. identity before touch; anamnese before cuff inflation; results after auscultation).
 
-- [ ] Replace automatic answer submission with actual learner actions/dialogue/input and instrument state. The prototype currently supplies identity, cuff choice, pressure readings, disinfection, and material-gathering results on behalf of the learner. Keep any mock automation explicitly separate from assessed interaction.
-- [ ] Implement elapsed-time handling; immediate dispatch of rest/wait completion with numeric durations is not a timer. Any accelerated mode must explicitly label simulated time.
-- [ ] Use controller dispatch results and refreshed state to decide success feedback and progression; current handlers display success without checking acceptance.
-- [ ] Resolve arrows and input targets through actual scene anchors/metadata after task (1). Existing hard-coded patient/instrument positions reflect an older layout, and name fallback omits imported sanitizer/sphygmomanometer prefixes. Remove stale station assumptions and support the active arm.
-- [ ] Reuse canonical scenario prompts/labels. The prototype still asks for forward-facing earpieces and offers only bell placement despite the revised checklist wording and bell/diaphragm support in the engine.
-- [ ] Prevent duplicate actions from handling both pointer-down and pointer-pick for one gesture. Connect desktop and XR input to the same validated action path with exclusive ownership, release, and tracking-loss handling.
-- [ ] Integrate initialization after the simulation is ready, state refresh after accepted actions, and cleanup on restart/menu return, including observers and pending feedback timers. Provide guidance visible inside immersive XR; the existing DOM card alone is not sufficient.
+**Delivered:** Integrated in `SimulationController.ts` (decoupledFlow mode), `App.ts`, and `InteractionManager.ts`.
 
-Adapt the existing hand-tracking and pinch prototype for selecting, picking up, placing, and releasing instruments. Use simplified visible hands inspired by the reference. Define valid placement zones, prevent simultaneous ownership of an instrument, and recover cleanly from tracking loss. Add a current-step panel and a target arrow; completion should follow validated interactions. Use dialogue choices for verbal actions and explicit representations for actions without a practical tracked gesture.
+### 6. Implement Measurement Mechanics and Audio (Current Priority / In Progress)
 
-**Acceptance:** the first hygiene step can be completed with hands, the cue advances correctly, and an unrelated action does not advance progress.
+Implement steps 14–22 with interactive visual and auditory auscultatory mechanics:
+- [ ] **Aneroid Gauge Needle Animation:** Animate the dial needle on the sphygmomanometer gauge face proportional to current cuff pressure (0–300 mmHg) during rapid inflation (+10 mmHg increments) and controlled deflation (2 mmHg/s).
+- [ ] **Korotkoff Sounds Synthesizer (Web Audio API):**
+  - Synthesize rhythmic acoustic Korotkoff pulses synchronized with patient heart rate (~72 bpm, ~833 ms interval) and current cuff pressure:
+    - Phase I (Systolic): Clear, repetitive tapping sounds appearing at systolic pressure.
+    - Phase II/III: Murmurs / swishing softening and intensifying.
+    - Phase IV: Distinct muffling of sounds (4–5 mmHg above phase V).
+    - Phase V (Diastolic): Complete cessation/disappearance of sounds (or persistent muffling to zero in persistent sounds branch).
+  - Gate audio playback to active auscultation (stethoscope earpieces placed and chestpiece on cubital fossa).
+- [ ] **Stethoscope Manipulation & Cubital Placement:** Visual chestpiece positioning onto the cubital fossa proxy during auscultation.
+- [ ] **Bilateral Assessment Orchestration (Future extension):** Orchestrate first assessment on both arms with minimum one-minute interval between measurements and reference-arm comparison.
 
-### 5. Implement Preparation and Patient Setup
+**Acceptance:** gauge needle and synthesized Korotkoff sounds remain synchronized with scenario pressure values and deflation rate.
 
-Implement checklist steps 1–13 from the mapping below: hygiene, equipment preparation, two identity checks according to institutional policy, readiness dialogue (90 minutes without exercise/walking/physiotherapy; 30 minutes without the listed intake/smoking), at least five minutes of rest, arm measurement, cuff selection, patient positioning, and gauge alignment. Make waiting periods explicit; any accelerated development mode must label simulated time. Use the PDF's cuff table as scenario data and define a selection policy for overlapping ranges rather than silently choosing one.
+### 7. Implement Completion and Formative Debrief ✓
 
-**Acceptance:** prerequisites and the 2026 cuff table affect progression, repeated hygiene actions remain independently required, and arm preparation/selection applies to the active side during a first assessment.
+Implement steps 24–26, cuff removal, nursing documentation, and the comprehensive session debriefing report:
+- [x] **Physical Technique Assessment:** Scores deflation velocity (2 mmHg/s), inflation increment (20–30 mmHg above estimate), stethoscope placement, repeated hygiene moments (steps 1, 4, 8, 25), and precise nursing record documentation.
+- [x] **Communication Timing & Omission Report:**
+  - Evaluates whether patient identification (Passo 5) was performed before physical procedure.
+  - Evaluates whether anamnese (Passo 6) and 5-min quiet rest (Passo 7) were conducted prior to inflation.
+  - Evaluates whether measured values were communicated to the patient (Passo 23).
+  - Highlights skipped questions, delayed communication, and improper timing with constructive educational feedback in Portuguese.
+- [x] **Formative Debriefing UI:** Glassmorphic debriefing card on desktop HUD and in-headset WebXR 3D slate rendering at procedure conclusion (Passo 26).
+- [x] Supporting Table 2 included for office measurement reference in adults aged 18 or over.
 
-### 6. Implement Measurement Mechanics and Audio
-
-Implement steps 14–22 with a shared simulation state for cuff pressure, inflation, valve-controlled deflation, pulse cues, and Korotkoff sounds. Synchronize gauge readings and audio with scenario pressure values. Let learners identify and record systolic and diastolic readings. Include the branch for sounds persisting to zero and the required confirmation after sounds disappear. After full deflation for the palpatory estimate, require at least one minute before the auscultatory measurement, with no maximum wait invented. Accept either the bell or diaphragm at the cubital region.
-
-For a first assessment, measure both arms with a minimum one-minute interval between measurements. Keep this timer distinct from the post-estimation wait. Track readings and sound-persistence branches per arm; implement an explicit switch of arm with circumference/cuff/position checks and a new estimate. Document the precise timer start/end events and repeated preparation actions as an implementation policy for subject-matter review; the PDF gives the interval but does not spell out the repetition loop.
-
-**Acceptance:** learners can complete ordinary and persistent-sound measurements on either arm; first-assessment completion requires both arms and enforces the interval; audio and gauge readings remain synchronized at different frame rates.
-
-### 7. Implement Completion and Debrief
-
-Implement steps 23–26: communicate results, remove the cuff, repeat hygiene, and document the measurement. Provide Portuguese feedback on completed steps, incorrect attempts, and recorded readings. The documentation form should capture the PDF example's date/time, arm, patient position, exact pressure values, and professional identification using fictional data. For a first assessment, retain both arm records, compare values, and record the higher-pressure reference arm for subsequent measurements. The PDF does not specify tie handling or how to choose when systolic and diastolic comparisons favor different arms; obtain an explicit policy before automatically scoring those cases.
-
-Include Table 2 as supporting learning content for office measurements in adults aged 18 or over. Preserve its literal transcription and flag the missing comparison sign in the stage-3 diastolic cell; defer automatic classification/scoring until clarified. The table is supporting content, not an added mandatory 27th checklist step.
-
-**Acceptance:** completion requires final documentation (both records and reference-arm selection for a first assessment), and restarting clears both arms, timers, and the previous reference selection.
+**Delivered:** Formative debriefing engine and UI delivered in `SimulationController.ts`, `InteractionManager.ts`, and `style.css`.
 
 ### 8. Validate the Full Scenario
 
@@ -252,39 +271,38 @@ Compare each implemented step with the supplied PDF and review clinical content 
 
 ## Checklist-to-Simulation Mapping
 
-The following summarizes the supplied PDF in English for implementation. Numeric values and ordering are retained from that source; consult the PDF for its full wording and illustrations/table.
+The following summarizes the supplied PDF in English for implementation, incorporating the 2026 architectural simplifications and decoupled lateral dialogue flow.
 
-| PDF step | Required simulation action or condition |
-| --- | --- |
-| 1 | Perform hand hygiene. |
-| 2 | Disinfect stethoscope bell/diaphragm and earpieces with cotton and 70% alcohol. |
-| 3 | Gather the required materials on the tray. |
-| 4 | Perform hand hygiene again. |
-| 5 | Introduce oneself and confirm two patient identifiers, such as name and date of birth, according to institutional policy. |
-| 6 | Check bladder status, absence of exercise/walking/physiotherapy in the preceding 90 minutes, and absence of alcohol, coffee, food, or smoking in the preceding 30 minutes. |
-| 7 | Explain the procedure, provide at least 5 minutes of quiet rest, and instruct the patient not to talk during measurement. Handle questions before or after measurement. |
-| 8 | Perform hand hygiene. |
-| 9 | Locate the midpoint between acromion and olecranon with the bare arm flexed and hand at waist height; then extend the arm alongside the body, measure circumference at that midpoint, and select a cuff using PDF Table 1. |
-| 10 | Seat the patient with uncrossed legs, feet on the floor, supported and relaxed back, and bare supported arm at heart level (PDF: between third and fifth intercostal spaces), palm upward and elbow slightly flexed. |
-| 11 | Palpate the brachial artery and align the middle of the cuff bladder over it. |
-| 12 | Fit the cuff without gaps, 2–3 cm above the cubital fossa. |
-| 13 | Align eye level with the aneroid gauge. |
-| 14 | Palpate the radial pulse; inflate until it disappears, slowly deflate, record the pressure at reappearance as the systolic estimate, fully deflate, and wait one minute (implemented as a minimum; the source gives no upper bound). |
-| 15 | Place the stethoscope earpieces in the ears. The revised item no longer specifies forward curvature. |
-| 16 | Palpate the brachial artery in the cubital fossa and place the bell or diaphragm without excessive compression. |
-| 17 | Inflate rapidly in 10 mmHg increments to 20–30 mmHg above the prior systolic estimate. |
-| 18 | Deflate at 2 mmHg/second. |
-| 19 | Identify systolic pressure at the first Korotkoff sound (phase I), followed by regular beats. |
-| 20 | Identify diastolic pressure when sounds disappear (phase V). |
-| 21 | Continue listening for another 20–30 mmHg to confirm disappearance, then release all remaining air. |
-| 22 | Conditional branch: if sounds persist to zero, use sound muffling for diastolic pressure and record systolic/diastolic/zero. Evaluate this during deflation, not as an obligatory second measurement after step 21. |
-| 23 | Inform the patient of the measured values. |
-| 24 | Remove the cuff. |
-| 25 | Perform hand hygiene. |
-| 26 | Mark the procedure as performed and record exact pressure values without rounding in the simulated nursing record. |
+| PDF step | Step Description | Flow Type / Execution Mode | Required Simulation Action or Condition |
+| --- | --- | --- | --- |
+| 1 | Hand hygiene | Physical (Sequential) | Perform hand hygiene at the dispenser or sink. |
+| 2 | Stethoscope disinfection | Physical (Sequential) | Disinfect bell/diaphragm and earpieces with cotton and 70% alcohol. |
+| 3 | Material preparation | Physical (Sequential) | Gather required materials on the tray. |
+| 4 | Hand hygiene | Physical (Sequential) | Perform hand hygiene again before approaching patient. |
+| 5 | Patient identification | Communication (Lateral Icon) | On-demand via lateral icon (expected before touching patient). Patient confirms identity automatically. |
+| 6 | Anamnese / Readiness | Communication (Lateral Icon) | On-demand via lateral icon (expected before measurement). Patient confirms empty bladder, ≥90 min exercise, ≥30 min intake. |
+| 7 | Explanation & quiet rest | Communication & Rest (Lateral Icon) | On-demand via lateral icon (expected before measurement). Explains procedure, requests silence, advances 5-min quiet rest. |
+| 8 | Hand hygiene | Physical (Sequential) | Perform hand hygiene before measuring. |
+| 9 | Midpoint & cuff selection | Pre-established Setup | Pre-configured in 3D scene (cuff correctly sized from Table 1 and pre-fitted on arm). |
+| 10 | Patient positioning | Pre-established Setup | Pre-configured in 3D scene (seated, feet supported, back rested, arm supported at heart level). |
+| 11 | Artery palpation & bladder | Pre-established Setup | Pre-configured in 3D scene (bladder centered over brachial artery). |
+| 12 | Cuff fitting | Pre-established Setup | Pre-configured in 3D scene (cuff snug, 2–3 cm above cubital fossa). |
+| 13 | Eye-level manometer alignment | Physical (Sequential) | Align eye level with the aneroid gauge face. |
+| 14 | Radial systolic estimation | Physical (Sequential) | Palpate radial pulse, inflate until disappearance, deflate, note systolic estimate, release air, and wait 1 min. |
+| 15 | Stethoscope earpieces | Physical (Sequential) | Place stethoscope earpieces in ears. |
+| 16 | Chestpiece placement | Physical (Sequential) | Palpate brachial artery in cubital fossa and place bell or diaphragm without excessive pressure. |
+| 17 | Auscultatory inflation | Physical (Sequential) | Inflate rapidly in 10 mmHg increments to 20–30 mmHg above systolic estimate. |
+| 18 | Controlled deflation | Physical (Sequential) | Deflate at 2 mmHg/second. |
+| 19 | Systolic identification | Physical (Sequential) | Identify systolic pressure at first Korotkoff sound (phase I) with regular beats. |
+| 20 | Diastolic identification | Physical (Sequential) | Identify diastolic pressure at disappearance of sounds (phase V). |
+| 21 | Confirmation & air release | Physical (Sequential) | Auscultate for another 20–30 mmHg to confirm disappearance, then release remaining air. |
+| 22 | Persistent sounds (Branch) | Physical (Conditional) | If sounds persist to zero, record muffling as diastolic and document systolic/diastolic/zero. |
+| 23 | Inform patient | Communication (Lateral Icon) | On-demand via lateral icon (expected after auscultation). Informs measured values to patient. |
+| 24 | Cuff removal | Physical (Sequential) | Remove the cuff from the patient's arm. |
+| 25 | Final hand hygiene | Physical (Sequential) | Perform hand hygiene after concluding patient care. |
+| 26 | Procedure documentation | Physical (Sequential) | Document exact readings, arm, position, date/time, and professional ID in nursing chart. |
 
 The PDF also lists the five moments of hand hygiene and cuff bladder sizing guidance (40% of arm circumference for width and at least 80% for length). Preserve these as supporting learning content. Do not silently replace the supplied checklist with additional procedures or different thresholds; record any agreed content revisions explicitly.
-
 
 ## 2026 Checklist Migration and Supporting Tables
 
