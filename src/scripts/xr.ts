@@ -4,6 +4,7 @@ import { WebXRDefaultExperience } from "@babylonjs/core/XR/webXRDefaultExperienc
 import { WebXRFeatureName } from "@babylonjs/core/XR/webXRFeaturesManager";
 import { WebXRState } from "@babylonjs/core/XR/webXRTypes";
 import "@babylonjs/core/XR/features/WebXRControllerMovement";
+import { PointerEventTypes } from "@babylonjs/core/Events/pointerEvents";
 
 import { WebXRHandJoint, WebXRHandTracking } from "@babylonjs/core/XR/features/WebXRHandTracking";
 import type { TransformNode } from "@babylonjs/core/Meshes/transformNode";
@@ -23,25 +24,22 @@ export default class XR {
     }
 
     public async onStart(): Promise<void> {
-        const ground = this.scene.getMeshByName("ground");
+        const teleportFloor = this.scene.getMeshByName("teleport-floor");
         const box = this.scene.getMeshByName("box");
 
-        if (!ground) {
-            console.error("XR: ground not found");
+        if (!teleportFloor) {
+            console.error("XR: teleport floor not found");
             return;
         }
 
         try {
-            const floorMeshes = [ground];
-            const officeFloor = this.scene.getMeshByName("DoctorsOffice_blinn1_0");
-            if (officeFloor) {
-                floorMeshes.push(officeFloor);
-            }
-
             const xr = await WebXRDefaultExperience.CreateAsync(
                 this.scene,
                 {
-                    floorMeshes,
+                    floorMeshes: [teleportFloor],
+                    // Hands have no thumbstick: teleport on a long pinch, kept
+                    // long enough that a short pinch still selects objects.
+                    teleportationOptions: { timeToTeleport: 3000 },
                 }
             );
 
@@ -81,8 +79,18 @@ export default class XR {
 
             xr.baseExperience.onStateChangedObservable.add((state) => {
                 if (state === WebXRState.IN_XR) {
-                    xr.baseExperience.camera.position.copyFrom(initialSpawnPosition);
-                    xr.baseExperience.camera.setTarget(initialTarget);
+                    // The XR camera position is the head, and the first frame has
+                    // already added the user's height: keep it instead of using y = 0,
+                    // which would put the eyes below the office floor.
+                    const camera = xr.baseExperience.camera;
+                    const headHeight = camera.realWorldHeight || 1.6;
+                    camera.position.set(
+                        initialSpawnPosition.x,
+                        teleportFloor.position.y + headHeight,
+                        initialSpawnPosition.z
+                    );
+                    camera.setTarget(initialTarget);
+                    console.log("[XR spawn] posição inicial:", camera.position.asArray().map(value => value.toFixed(2)));
                 }
             });
 
@@ -94,6 +102,7 @@ export default class XR {
                 xr.teleportation.addSnapPoint(new Vector3(-1.50, 0, -0.50));  // 4: Mesa & Instrumentos
                 xr.teleportation.addSnapPoint(new Vector3(0.05, 0, -0.55));   // Aproximação pelo braço esquerdo
                 xr.teleportation.addSnapPoint(new Vector3(-0.18, 0, -1.82));  // Aproximação pelo braço direito
+                this._fixHandTeleportation(xr);
             }
 
             const handTracking =
@@ -306,5 +315,66 @@ export default class XR {
                 error
             );
         }
+    }
+
+    // Babylon starts a hand's long-press teleport from scene pointer events.
+    private _fixHandTeleportation(xr: WebXRDefaultExperience): void {
+        const teleportation = xr.teleportation;
+
+        // When the target appears, teleportation detaches pointer selection,
+        // which emits a synthetic pointer up and cancels a hand teleport.
+        teleportation.setSelectionFeature(null);
+
+        // Every hand starts on any pointer down and the last one registered
+        // wins, so hand the teleport back to the hand that actually pinched.
+        const internals = teleportation as unknown as {
+            _currentTeleportationControllerId: string;
+            _controllers: Record<string, { teleportationState: { forward: boolean }; xrController: { inputSource: XRInputSource } }>;
+            _options: { teleportationTargetMesh?: TransformNode };
+        };
+        const format = (value: Vector3) => value.asArray().map(n => n.toFixed(2)).join(", ");
+        const handOf = (id: string) => internals._controllers[id]?.xrController.inputSource.handedness ?? id;
+        this.scene.onPointerObservable.add(pointerInfo => {
+            const isDown = pointerInfo.type === PointerEventTypes.POINTERDOWN;
+            if (!isDown && pointerInfo.type !== PointerEventTypes.POINTERUP) return;
+            const pointerId = (pointerInfo.event as PointerEvent).pointerId;
+            const source = xr.pointerSelection.getXRControllerByPointerId(pointerId);
+            if (!source?.inputSource.hand) return;
+            const handedness = source.inputSource.handedness;
+            if (!isDown) {
+                console.log("[XR teleporte] pinça solta:", handedness);
+                return;
+            }
+            console.log("[XR teleporte] pinça iniciada:", handedness);
+            xr.baseExperience.sessionManager.onXRFrameObservable.addOnce(() => {
+                if (!internals._controllers[source.uniqueId]?.teleportationState.forward) return;
+                for (const [id, controller] of Object.entries(internals._controllers)) {
+                    if (id !== source.uniqueId) controller.teleportationState.forward = false;
+                }
+                internals._currentTeleportationControllerId = source.uniqueId;
+                console.log("[XR teleporte] mão que controla o alvo:", handedness,
+                    "| mãos registradas:", Object.keys(internals._controllers).map(handOf).join(", "));
+            });
+        });
+
+        // Temporary diagnostics: where the target is while the pinch is held.
+        let lastTargetLog = 0;
+        xr.baseExperience.sessionManager.onXRFrameObservable.add(() => {
+            const activeId = internals._currentTeleportationControllerId;
+            const target = internals._options.teleportationTargetMesh;
+            const now = performance.now();
+            if (!activeId || !target || now - lastTargetLog < 500) return;
+            lastTargetLog = now;
+            console.log("[XR teleporte] alvo atual:", format(target.position), "| mão:", handOf(activeId));
+        });
+
+        const camera = xr.baseExperience.camera;
+        teleportation.onBeforeCameraTeleport.add(position => {
+            console.log("[XR teleporte] câmera antes:", format(position));
+        });
+        teleportation.onAfterCameraTeleport.add(position => {
+            console.log("[XR teleporte] concluído:", format(position));
+            setTimeout(() => console.log("[XR teleporte] câmera 1 s depois:", format(camera.position)), 1000);
+        });
     }
 }

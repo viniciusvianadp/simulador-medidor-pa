@@ -1218,6 +1218,12 @@ export class InteractionManager {
 			ctx.fillText("Interaja com o objeto 3D • Use o ícone de diálogo para falar com o paciente", 40, 465);
 		}
 
+		ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
+		ctx.font = "18px 'Segoe UI', Arial, sans-serif";
+		ctx.textAlign = "right";
+		ctx.fillText("Mover: aponte para o chão e mantenha a pinça por 3 s", w - 40, 492);
+		ctx.textAlign = "left";
+
 		this._xrSlateTexture.update();
 		this._xrConfirmationTarget?.setEnabled(Boolean(confirmationLabel));
 		this._xrInflateTarget?.setEnabled(canInflate);

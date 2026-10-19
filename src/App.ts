@@ -445,6 +445,14 @@ export class App {
 		ground.isPickable = true;
 		ground.visibility = 0;
 
+		// Teleport only onto the room interior, never walls, ceiling or the oversized ground.
+		officeShell?.computeWorldMatrix(true);
+		const floorY = officeShell?.getBoundingInfo().boundingBox.minimumWorld.y ?? 0;
+		const teleportFloor = CreateGround("teleport-floor", { width: 4.33, height: 4.52 }, scene);
+		teleportFloor.position.set(-0.085, floorY + 0.005, -0.06);
+		teleportFloor.visibility = 0;
+		teleportFloor.isPickable = false;
+
 		// Invisible collision / test fixtures for test compatibility
 		const wallSide = CreateBox("wall-side-1", { width: 0.1, height: 3, depth: 5 }, scene);
 		wallSide.position.set(2.28, 1.5, 0);
