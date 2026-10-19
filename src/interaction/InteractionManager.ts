@@ -3,6 +3,7 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import { CreateCylinder } from "@babylonjs/core/Meshes/Builders/cylinderBuilder";
 import { CreatePlane } from "@babylonjs/core/Meshes/Builders/planeBuilder";
 import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder";
@@ -37,6 +38,10 @@ const targetInfo: Record<string, TargetMeta> = {
 	"dialogue-trigger": { label: "Diálogo com o Paciente", icon: "💬", station: "cadeira" },
 };
 
+const pressureInteractionSteps = [
+	"inflate-for-auscultation", "start-deflation", "identify-systolic", "identify-diastolic", "confirm-disappearance", "persistent-sounds",
+];
+
 export class InteractionManager {
 	private _visualMotions: Array<{ node: TransformNode | Mesh; from: Vector3; to: Vector3; startedAt: number; duration: number }> = [];
 	private _scene: Scene;
@@ -48,9 +53,18 @@ export class InteractionManager {
 	private _xrSlateTexture: DynamicTexture | null = null;
 	private _xrConfirmationTarget: Mesh | null = null;
 	private _xrInflateTarget: Mesh | null = null;
-	private _pressureGauge: Mesh | null = null;
-	private _pressureGaugeTexture: DynamicTexture | null = null;
-	private _lastDisplayedPressure = Number.NaN;
+	private _xrDeflationPauseTarget: Mesh | null = null;
+	private _xrPressureBoardRoot: TransformNode | null = null;
+	private _xrPressureBoardTexture: DynamicTexture | null = null;
+	private _xrPressureConfirmTarget: Mesh | null = null;
+	private _xrPressureInflateTarget: Mesh | null = null;
+	private _xrPressurePauseTarget: Mesh | null = null;
+	private _xrPressureBoardActive = false;
+	private _xrPressureBoardInstruction = "";
+	private _xrPressureBoardCanInflate = false;
+	private _xrPressureBoardConfirmation: string | null = null;
+	private _xrPressureBoardDeflationControl: string | null = null;
+	private _xrPressureBoardLastPressure = Number.NaN;
 	private _sphygmomanometerPositioned = false;
 	private _xrDialogueTargets: Mesh[] = [];
 	private _dialogueTriggerRoot: TransformNode | null = null;
@@ -68,91 +82,19 @@ export class InteractionManager {
 		this._scene = scene;
 		this._app = app;
 		this._initTargetArrow();
-		this._initPressureGauge();
 		this._initXrSlate();
+		this._initXrPressureBoard();
 		this._initDialogueTrigger();
 		this._initGuidanceHUD();
 		this._initPointerInteractions();
 		this._updateGuidance();
 	}
 
-	private _initPressureGauge(): void {
-		const sphygmo = this._scene.getTransformNodeByName("sphygmo-root");
-		if (!sphygmo) return;
-
-		const gauge = CreatePlane("pressure-readout", { width: 0.38, height: 0.26 }, this._scene);
-		gauge.position.copyFrom(sphygmo.position).addInPlace(new Vector3(0, 0.20, 0.13));
-		gauge.billboardMode = Mesh.BILLBOARDMODE_ALL;
-		gauge.isPickable = false;
-		const material = new StandardMaterial("pressure-readout-material", this._scene);
-		material.disableLighting = true;
-		material.backFaceCulling = false;
-		material.emissiveColor = Color3.White();
-		const texture = new DynamicTexture("pressure-readout-texture", { width: 512, height: 346 }, this._scene, false);
-		material.diffuseTexture = texture;
-		material.opacityTexture = texture;
-		gauge.material = material;
-		this._pressureGauge = gauge;
-		this._pressureGaugeTexture = texture;
-		this._drawPressureGauge(0);
-	}
-
-	private _drawPressureGauge(pressure: number): void {
-		const texture = this._pressureGaugeTexture;
-		if (!texture) return;
-		const ctx = texture.getContext() as unknown as CanvasRenderingContext2D;
-		const value = Math.max(0, Math.min(300, pressure));
-		ctx.clearRect(0, 0, 512, 346);
-		ctx.fillStyle = "#17252b";
-		ctx.beginPath();
-		ctx.roundRect(5, 5, 502, 336, 28);
-		ctx.fill();
-		ctx.strokeStyle = "#dce6e8";
-		ctx.lineWidth = 8;
-		ctx.stroke();
-		ctx.fillStyle = "#ffffff";
-		ctx.font = "bold 29px sans-serif";
-		ctx.textAlign = "center";
-		ctx.fillText("PRESSÃO NO MANGUITO", 256, 55);
-		const cx = 256, cy = 253, radius = 155;
-		ctx.strokeStyle = "#c8d8dc";
-		ctx.lineWidth = 5;
-		ctx.beginPath();
-		ctx.arc(cx, cy, radius, Math.PI, Math.PI * 2);
-		ctx.stroke();
-		for (let i = 0; i <= 30; i++) {
-			const angle = Math.PI + (i / 30) * Math.PI;
-			const inner = radius - (i % 5 === 0 ? 19 : 10);
-			ctx.beginPath();
-			ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
-			ctx.lineTo(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
-			ctx.stroke();
-		}
-		ctx.fillStyle = "#ffffff";
-		ctx.font = "bold 24px sans-serif";
-		ctx.fillText("0                 150                300", 256, 223);
-		const needleAngle = Math.PI + (value / 300) * Math.PI;
-		ctx.strokeStyle = "#ff5b55";
-		ctx.lineWidth = 9;
-		ctx.beginPath();
-		ctx.moveTo(cx, cy);
-		ctx.lineTo(cx + Math.cos(needleAngle) * (radius - 28), cy + Math.sin(needleAngle) * (radius - 28));
-		ctx.stroke();
-		ctx.fillStyle = "#ff5b55";
-		ctx.beginPath();
-		ctx.arc(cx, cy, 13, 0, Math.PI * 2);
-		ctx.fill();
-		ctx.fillStyle = "#ffffff";
-		ctx.font = "bold 31px sans-serif";
-		ctx.fillText(`${Math.round(value)} mmHg`, 256, 320);
-		texture.update();
-	}
-
 	public updatePressureDisplay(pressure: number): void {
 		const rounded = Math.round(pressure * 4) / 4;
-		if (Math.abs(rounded - this._lastDisplayedPressure) >= 0.25) {
-			this._lastDisplayedPressure = rounded;
-			this._drawPressureGauge(rounded);
+		if (!Number.isFinite(this._xrPressureBoardLastPressure) || Math.abs(rounded - this._xrPressureBoardLastPressure) >= 0.25) {
+			this._xrPressureBoardLastPressure = rounded;
+			this._renderXrPressureBoard(rounded);
 		}
 		const liveValue = this._guidanceCard?.querySelector("#hud-cuff-pressure-value");
 		if (liveValue) liveValue.textContent = `${Math.round(pressure)} mmHg`;
@@ -181,8 +123,6 @@ export class InteractionManager {
 				stethoscope?.setEnabled(false);
 				break;
 		}
-		const pressure = this._app.getSimulationSnapshot()?.instruments.cuffPressure ?? 0;
-		this._drawPressureGauge(pressure);
 	}
 
 	private _moveSphygmomanometerNearPatient(): void {
@@ -203,13 +143,6 @@ export class InteractionManager {
 			facing.normalize();
 			const yaw = Math.atan2(facing.x, facing.z);
 			sphygmomanometer.rotation.y = yaw;
-			if (this._pressureGauge) {
-				this._pressureGauge.position.copyFrom(destination)
-					.addInPlace(new Vector3(0, 0.10, 0))
-					.addInPlace(facing.scale(0.25));
-			}
-		} else if (this._pressureGauge) {
-			this._pressureGauge.position.copyFrom(destination).addInPlace(new Vector3(0, 0.10, 0.25));
 		}
 		this._sphygmomanometerPositioned = true;
 	}
@@ -264,34 +197,17 @@ export class InteractionManager {
 					this._dialogueTriggerRoot.lookAt(camera.position, Math.PI);
 				}
 			}
-
-			if (this._xrSlateRoot) {
-				const camera = this._scene.activeCamera;
-				if (camera) {
-					const forward = camera.getDirection(Vector3.Forward()).normalize();
-					const screenRight = camera.getDirection(Vector3.Right()).normalize();
-					let wallDistance = 1.15;
-					if (forward.x > 0.001) wallDistance = Math.min(wallDistance, (1.9 - camera.position.x) / forward.x);
-					else if (forward.x < -0.001) wallDistance = Math.min(wallDistance, (-1.9 - camera.position.x) / forward.x);
-					if (forward.z > 0.001) wallDistance = Math.min(wallDistance, (1.9 - camera.position.z) / forward.z);
-					else if (forward.z < -0.001) wallDistance = Math.min(wallDistance, (-1.9 - camera.position.z) / forward.z);
-
-					const depth = Math.max(0.3, Math.min(1.15, wallDistance - 0.25));
-					const slatePosition = camera.position.add(forward.scale(depth))
-						.addInPlace(screenRight.scale(0.55))
-						.addInPlace(new Vector3(0, 0.12, 0));
-					slatePosition.x = Math.max(-1.9, Math.min(1.9, slatePosition.x));
-					slatePosition.z = Math.max(-1.9, Math.min(1.9, slatePosition.z));
-					Vector3.LerpToRef(this._xrSlateRoot.position, slatePosition, 0.15, this._xrSlateRoot.position);
-					this._xrSlateRoot.lookAt(camera.position, Math.PI);
-				}
-			}
 		});
 	}
 
 	private _initXrSlate(): void {
 		const slateRoot = new TransformNode("xr-guidance-slate-root", this._scene);
-		const plane = CreatePlane("xr-guidance-slate", { width: 0.85, height: 0.42 }, this._scene);
+		// Offset it into the room so the wall mesh cannot occlude the slate.
+		slateRoot.position.set(-2.30, 1.85, -0.62);
+		// CreatePlane's front normal is local -Z, so rotate that normal toward +X
+		// (into the room) rather than turning the text away from the learner.
+		slateRoot.rotation.y = -Math.PI / 2;
+		const plane = CreatePlane("xr-guidance-slate", { width: 0.95, height: 0.50 }, this._scene);
 		plane.parent = slateRoot;
 		plane.isPickable = false;
 
@@ -329,7 +245,187 @@ export class InteractionManager {
 		inflateTarget.metadata = { logicalTarget: "inflate-action" };
 		inflateTarget.setEnabled(false);
 		this._xrInflateTarget = inflateTarget;
+		const deflationPauseTarget = CreatePlane("xr-guidance-deflation-pause-action", { width: 0.20, height: 0.065 }, this._scene);
+		deflationPauseTarget.parent = slateRoot;
+		deflationPauseTarget.position.set(0, -0.125, -0.004);
+		deflationPauseTarget.material = confirmMaterial;
+		deflationPauseTarget.isPickable = true;
+		deflationPauseTarget.metadata = { logicalTarget: "deflation-pause-action" };
+		deflationPauseTarget.setEnabled(false);
+		this._xrDeflationPauseTarget = deflationPauseTarget;
 		this._initXrDialogueTargets(slateRoot);
+	}
+
+	private _initXrPressureBoard(): void {
+		const root = new TransformNode("xr-pressure-board-root", this._scene);
+		// The plane's front points along local -Z. Face it toward the right-arm
+		// station and keep the board orientation fixed there.
+		root.rotation.y = 0;
+		root.setEnabled(true);
+		const frame = CreateBox("xr-pressure-board-frame", { width: 0.58, height: 0.40, depth: 0.025 }, this._scene);
+		frame.parent = root;
+		const frameMaterial = new StandardMaterial("xr-pressure-board-frame-material", this._scene);
+		frameMaterial.diffuseColor = Color3.FromHexString("#1B5947");
+		frameMaterial.emissiveColor = Color3.FromHexString("#102E25");
+		frame.material = frameMaterial;
+		frame.isPickable = false;
+
+		const surface = CreatePlane("xr-pressure-board-surface", { width: 0.54, height: 0.36 }, this._scene);
+		surface.parent = root;
+		// Put the readable surface on the learner-facing side of the frame.
+		surface.position.z = -0.014;
+		surface.isPickable = false;
+		const texture = new DynamicTexture("xr-pressure-board-texture", { width: 768, height: 512 }, this._scene, false);
+		const surfaceMaterial = new StandardMaterial("xr-pressure-board-surface-material", this._scene);
+		surfaceMaterial.diffuseTexture = texture;
+		surfaceMaterial.emissiveColor = Color3.White();
+		surfaceMaterial.backFaceCulling = false;
+		surface.material = surfaceMaterial;
+
+		const targetMaterial = new StandardMaterial("xr-pressure-board-target-material", this._scene);
+		targetMaterial.diffuseColor = Color3.White();
+		targetMaterial.emissiveColor = Color3.White();
+		targetMaterial.alpha = 0.001;
+		targetMaterial.disableDepthWrite = true;
+		const makeTarget = (name: string, logicalTarget: string): Mesh => {
+			const target = CreatePlane(name, { width: 0.24, height: 0.065 }, this._scene);
+			target.parent = root;
+			target.position.set(0, -0.122, -0.022);
+			target.material = targetMaterial;
+			target.isPickable = true;
+			target.metadata = { logicalTarget };
+			target.setEnabled(false);
+			return target;
+		};
+
+		this._xrPressureBoardRoot = root;
+		this._xrPressureBoardTexture = texture;
+		this._xrPressureConfirmTarget = makeTarget("xr-pressure-board-confirm", "confirm-action");
+		this._xrPressureInflateTarget = makeTarget("xr-pressure-board-inflate", "inflate-action");
+		this._xrPressurePauseTarget = makeTarget("xr-pressure-board-pause", "deflation-pause-action");
+	}
+
+	private _positionXrPressureBoard(): void {
+		const root = this._xrPressureBoardRoot;
+		if (!root) return;
+		const patientRoot = this._scene.getTransformNodeByName("patient-root");
+		if (!patientRoot) return;
+		const leftArm = this._scene.getMeshByName("patient-forearm-esquerdo");
+		if (!leftArm) return;
+		const armPosition = leftArm.getAbsolutePosition();
+		const outward = armPosition.subtract(patientRoot.getAbsolutePosition());
+		outward.y = 0;
+		if (outward.lengthSquared() < 0.001) outward.set(1, 0, 0);
+		outward.normalize();
+		// Keep it close beside the left forearm, away from the approach to the
+		// right arm. The fixed front remains oriented toward the right-arm station.
+		root.position.copyFrom(armPosition)
+			.addInPlace(outward.scale(0.10))
+			.addInPlace(new Vector3(0, 0.25, 0));
+		root.rotation.y = 0;
+	}
+
+	private _renderXrPressureBoard(pressure: number): void {
+		const texture = this._xrPressureBoardTexture;
+		if (!texture) return;
+		this._xrPressureBoardLastPressure = Math.round(pressure * 4) / 4;
+		const ctx = texture.getContext() as unknown as CanvasRenderingContext2D;
+		ctx.clearRect(0, 0, 768, 512);
+		ctx.fillStyle = "#FFFFFF";
+		ctx.fillRect(0, 0, 768, 512);
+		ctx.strokeStyle = "#1B5947";
+		ctx.lineWidth = 8;
+		ctx.strokeRect(8, 8, 752, 496);
+		ctx.fillStyle = "#17252b";
+		ctx.beginPath();
+		ctx.roundRect(20, 18, 728, 476, 22);
+		ctx.fill();
+		ctx.strokeStyle = "#dce6e8";
+		ctx.lineWidth = 5;
+		ctx.stroke();
+		ctx.fillStyle = "#ffffff";
+		ctx.textAlign = "center";
+		ctx.font = "bold 30px 'Segoe UI', Arial, sans-serif";
+		ctx.fillText("PRESSÃO NO MANGUITO", 384, 58);
+		const cx = 384, cy = 285, radius = 180;
+		ctx.strokeStyle = "#c8d8dc";
+		ctx.lineWidth = 5;
+		ctx.beginPath();
+		ctx.arc(cx, cy, radius, Math.PI, Math.PI * 2);
+		ctx.stroke();
+		for (let i = 0; i <= 30; i++) {
+			const angle = Math.PI + (i / 30) * Math.PI;
+			const inner = radius - (i % 5 === 0 ? 22 : 11);
+			ctx.beginPath();
+			ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
+			ctx.lineTo(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
+			ctx.stroke();
+		}
+		ctx.fillStyle = "#ffffff";
+		ctx.font = "bold 24px 'Segoe UI', Arial, sans-serif";
+		ctx.fillText("0", cx - radius + 12, 310);
+		ctx.fillText("150", cx, 310);
+		ctx.fillText("300", cx + radius - 12, 310);
+		const value = Math.max(0, Math.min(300, pressure));
+		const needleAngle = Math.PI + (value / 300) * Math.PI;
+		ctx.strokeStyle = "#ff5b55";
+		ctx.lineWidth = 9;
+		ctx.beginPath();
+		ctx.moveTo(cx, cy);
+		ctx.lineTo(cx + Math.cos(needleAngle) * (radius - 28), cy + Math.sin(needleAngle) * (radius - 28));
+		ctx.stroke();
+		ctx.fillStyle = "#ff5b55";
+		ctx.beginPath();
+		ctx.arc(cx, cy, 13, 0, Math.PI * 2);
+		ctx.fill();
+		ctx.fillStyle = "#ffffff";
+		ctx.font = "bold 30px 'Segoe UI', Arial, sans-serif";
+		ctx.fillText(`${Math.round(value)} mmHg`, cx, 355);
+		ctx.textAlign = "left";
+		ctx.fillStyle = "#ffffff";
+		ctx.font = "20px 'Segoe UI', Arial, sans-serif";
+		this._drawWrappedText(ctx, this._xrPressureBoardInstruction || "Acompanhe a pressão do manguito.", 36, 390, 696, 25);
+
+		const pairedControls = Boolean(
+			(this._xrPressureBoardCanInflate && this._xrPressureBoardConfirmation)
+			|| (this._xrPressureBoardDeflationControl && this._xrPressureBoardConfirmation)
+		);
+		const controls: Array<{ label: string; x: number; width: number }> = [];
+		if (this._xrPressureBoardCanInflate) controls.push({ label: "＋ Inflar +10", x: pairedControls ? 36 : 169, width: pairedControls ? 330 : 430 });
+		if (this._xrPressureBoardDeflationControl) {
+			controls.push({ label: this._xrPressureBoardDeflationControl, x: pairedControls ? 36 : 169, width: pairedControls ? 330 : 430 });
+		}
+		if (this._xrPressureBoardConfirmation) {
+			controls.push({ label: `✓ ${this._xrPressureBoardConfirmation}`, x: pairedControls ? 402 : 169, width: pairedControls ? 330 : 430 });
+		}
+		ctx.font = "bold 23px 'Segoe UI', Arial, sans-serif";
+		for (const control of controls) {
+			ctx.fillStyle = "#08765A";
+			ctx.beginPath();
+			ctx.roundRect(control.x, 414, control.width, 66, 12);
+			ctx.fill();
+			ctx.fillStyle = "#FFFFFF";
+			ctx.textAlign = "center";
+			ctx.fillText(control.label, control.x + control.width / 2, 455, control.width - 16);
+		}
+		ctx.textAlign = "left";
+		texture.update();
+
+		this._xrPressureInflateTarget?.setEnabled(this._xrPressureBoardCanInflate);
+		this._xrPressureConfirmTarget?.setEnabled(Boolean(this._xrPressureBoardConfirmation));
+		this._xrPressurePauseTarget?.setEnabled(Boolean(this._xrPressureBoardDeflationControl));
+		if (this._xrPressureInflateTarget) {
+			this._xrPressureInflateTarget.position.x = pairedControls ? -0.13 : 0;
+			this._xrPressureInflateTarget.scaling.x = pairedControls ? 1 : 1.25;
+		}
+		if (this._xrPressureConfirmTarget) {
+			this._xrPressureConfirmTarget.position.x = pairedControls ? 0.13 : 0;
+			this._xrPressureConfirmTarget.scaling.x = pairedControls ? 1 : 1.25;
+		}
+		if (this._xrPressurePauseTarget) {
+			this._xrPressurePauseTarget.position.x = pairedControls ? -0.13 : 0;
+			this._xrPressurePauseTarget.scaling.x = pairedControls ? 1 : 1.25;
+		}
 	}
 
 	private _initXrDialogueTargets(slateRoot: TransformNode): void {
@@ -418,6 +514,10 @@ export class InteractionManager {
 			return this.executeActiveActionFromScene();
 		}
 		if (logicalTarget === "inflate-action") return this._dispatchInflationIncrement();
+		if (logicalTarget === "deflation-pause-action") {
+			this._app.togglePressureDeflation();
+			return true;
+		}
 
 		const snapshot = this._app.getSimulationSnapshot();
 		const currentAction = this._app.getCurrentSimulationAction();
@@ -850,10 +950,40 @@ export class InteractionManager {
 				<button id="hud-inflate-button" class="step-action-button" type="button">＋ Inflar +10 mmHg</button>
 			</div>
 		` : "";
-		const pressureSteps = ["inflate-for-auscultation", "start-deflation", "identify-systolic", "identify-diastolic", "confirm-disappearance", "persistent-sounds"];
-		const pressureHtml = pressureSteps.includes(step.id) ? `
+		const canControlDeflation = this._app.isPressureDeflationActive() && pressureNow > 0;
+		const deflationControlLabel = canControlDeflation
+			? (this._app.isPressureDeflationPaused() ? "▶ Retomar deflação" : "⏸ Pausar deflação")
+			: null;
+		const deflationControlHtml = deflationControlLabel ? `
+			<div class="step-actions-row">
+				<button id="hud-deflation-control" class="step-action-button secondary" type="button">${deflationControlLabel}</button>
+			</div>
+		` : "";
+		const pressureHtml = pressureInteractionSteps.includes(step.id) ? `
 			<p class="step-detail">Pressão no manguito: <strong id="hud-cuff-pressure-value">${Math.round(pressureNow)} mmHg</strong></p>
 		` : "";
+		const pressureBoardActive = pressureInteractionSteps.includes(step.id);
+		this._xrPressureBoardActive = pressureBoardActive;
+		this._xrPressureBoardRoot?.setEnabled(true);
+		this._xrPressureBoardInstruction = pressureBoardActive
+			? action.prompt
+			: "Acompanhe a leitura do manguito durante a medição.";
+		if (pressureBoardActive) {
+			this._positionXrPressureBoard();
+			this._xrPressureBoardCanInflate = canInflate;
+			this._xrPressureBoardConfirmation = confirmationLabel;
+			this._xrPressureBoardDeflationControl = deflationControlLabel;
+			this._renderXrPressureBoard(pressureNow);
+		} else {
+			this._positionXrPressureBoard();
+			this._xrPressureBoardCanInflate = false;
+			this._xrPressureBoardConfirmation = null;
+			this._xrPressureBoardDeflationControl = null;
+			this._xrPressureConfirmTarget?.setEnabled(false);
+			this._xrPressureInflateTarget?.setEnabled(false);
+			this._xrPressurePauseTarget?.setEnabled(false);
+			this._renderXrPressureBoard(pressureNow);
+		}
 
 		let timerHtml = "";
 		if (action.rule === "estimation-wait") {
@@ -876,6 +1006,7 @@ export class InteractionManager {
 
 			${pressureHtml}
 			${inflationHtml}
+			${deflationControlHtml}
 			${stopGuidanceHtml}
 			${timerHtml}
 			${confirmationHtml}
@@ -914,6 +1045,8 @@ export class InteractionManager {
 		confirmBtn?.addEventListener("click", () => this.executeActiveActionFromScene());
 		const inflateBtn = this._guidanceCard.querySelector("#hud-inflate-button") as HTMLButtonElement | null;
 		inflateBtn?.addEventListener("click", () => this._dispatchInflationIncrement());
+		const deflationControlBtn = this._guidanceCard.querySelector("#hud-deflation-control") as HTMLButtonElement | null;
+		deflationControlBtn?.addEventListener("click", () => this._app.togglePressureDeflation());
 
 		const gotoBtn = this._guidanceCard.querySelector("#hud-goto-station-button") as HTMLButtonElement | null;
 		gotoBtn?.addEventListener("click", () => {
@@ -921,7 +1054,7 @@ export class InteractionManager {
 		});
 
 		// Update in-headset 3D slate
-		this._renderXrSlate(progressPercent, step.prompt, action.prompt, target.label, target.station, confirmationLabel, canInflate);
+		this._renderXrSlate(progressPercent, step.prompt, action.prompt, target.label, target.station, confirmationLabel, canInflate, deflationControlLabel, pressureBoardActive);
 	}
 
 	private _getConfirmationLabel(actionType?: string): string | null {
@@ -1159,7 +1292,7 @@ export class InteractionManager {
 		);
 	}
 
-	private _renderXrSlate(progressPercent: number, title: string, instruction: string, targetName: string, station: string, confirmationLabel: string | null, canInflate = false): void {
+	private _renderXrSlate(progressPercent: number, title: string, instruction: string, targetName: string, station: string, confirmationLabel: string | null, canInflate = false, deflationControlLabel: string | null = null, pressureBoardActive = false): void {
 		if (!this._xrSlateTexture) return;
 		const ctx = this._xrSlateTexture.getContext() as unknown as CanvasRenderingContext2D;
 		const w = 1024;
@@ -1191,7 +1324,11 @@ export class InteractionManager {
 		ctx.font = "30px 'Segoe UI', Arial, sans-serif";
 		this._drawWrappedText(ctx, instruction, 40, 310, 940, 40);
 
-		if (canInflate) {
+		if (pressureBoardActive) {
+			ctx.fillStyle = "#80DEEA";
+			ctx.font = "italic 26px 'Segoe UI', Arial, sans-serif";
+			ctx.fillText("Use o quadro de pressão ao lado do paciente para interagir.", 40, 440);
+		} else if (canInflate) {
 			ctx.fillStyle = "#08765A";
 			ctx.beginPath();
 			ctx.roundRect(confirmationLabel ? 270 : 300, 390, confirmationLabel ? 220 : 424, 62, 14);
@@ -1202,7 +1339,30 @@ export class InteractionManager {
 			ctx.fillText("＋ Inflar +10 mmHg", confirmationLabel ? 380 : 512, 430);
 			ctx.textAlign = "left";
 		}
-		if (confirmationLabel) {
+		if (!pressureBoardActive && deflationControlLabel) {
+			const paired = Boolean(confirmationLabel);
+			const buttonX = paired ? 40 : 300;
+			const buttonWidth = paired ? 430 : 424;
+			ctx.fillStyle = "#08765A";
+			ctx.beginPath();
+			ctx.roundRect(buttonX, 390, buttonWidth, 62, 14);
+			ctx.fill();
+			ctx.fillStyle = "#FFFFFF";
+			ctx.font = "bold 24px 'Segoe UI', Arial, sans-serif";
+			ctx.textAlign = "center";
+			ctx.fillText(deflationControlLabel, buttonX + buttonWidth / 2, 430);
+			if (confirmationLabel) {
+				ctx.fillStyle = "#08765A";
+				ctx.beginPath();
+				ctx.roundRect(554, 390, 430, 62, 14);
+				ctx.fill();
+				ctx.fillStyle = "#FFFFFF";
+				ctx.font = "bold 24px 'Segoe UI', Arial, sans-serif";
+				ctx.fillText(`✓ ${confirmationLabel}`, 769, 430);
+			}
+			ctx.textAlign = "left";
+		}
+		if (!pressureBoardActive && confirmationLabel && !deflationControlLabel) {
 			ctx.fillStyle = "#08765A";
 			ctx.beginPath();
 			ctx.roundRect(canInflate ? 520 : 300, 390, canInflate ? 250 : 424, 62, 14);
@@ -1212,7 +1372,7 @@ export class InteractionManager {
 			ctx.textAlign = "center";
 			ctx.fillText(`✓ ${confirmationLabel}`, canInflate ? 645 : 512, 430);
 			ctx.textAlign = "left";
-		} else if (!canInflate) {
+		} else if (!pressureBoardActive && !canInflate && !deflationControlLabel) {
 			ctx.fillStyle = "#FFD54F";
 			ctx.font = "italic 26px 'Segoe UI', Arial, sans-serif";
 			ctx.fillText("Interaja com o objeto 3D • Use o ícone de diálogo para falar com o paciente", 40, 465);
@@ -1225,10 +1385,18 @@ export class InteractionManager {
 		ctx.textAlign = "left";
 
 		this._xrSlateTexture.update();
-		this._xrConfirmationTarget?.setEnabled(Boolean(confirmationLabel));
-		this._xrInflateTarget?.setEnabled(canInflate);
-		if (this._xrConfirmationTarget) this._xrConfirmationTarget.position.x = canInflate && confirmationLabel ? 0.20 : 0;
+		this._xrConfirmationTarget?.setEnabled(Boolean(confirmationLabel) && !pressureBoardActive);
+		this._xrInflateTarget?.setEnabled(canInflate && !pressureBoardActive);
+		this._xrDeflationPauseTarget?.setEnabled(Boolean(deflationControlLabel) && !pressureBoardActive);
+		if (this._xrConfirmationTarget) {
+			this._xrConfirmationTarget.position.x = deflationControlLabel && confirmationLabel ? 0.213 : canInflate && confirmationLabel ? 0.20 : 0;
+			this._xrConfirmationTarget.scaling.x = deflationControlLabel && confirmationLabel ? 2.0 : 1;
+		}
 		if (this._xrInflateTarget) this._xrInflateTarget.position.x = canInflate && confirmationLabel ? -0.20 : 0;
+		if (this._xrDeflationPauseTarget) {
+			this._xrDeflationPauseTarget.position.x = deflationControlLabel && confirmationLabel ? -0.213 : 0;
+			this._xrDeflationPauseTarget.scaling.x = deflationControlLabel && confirmationLabel ? 2.0 : 1;
+		}
 	}
 
 	private _renderXrSlateDialogue(d5: boolean, d6: boolean, d7: boolean, d23: boolean, progressPercent: number): void {
@@ -1438,14 +1606,22 @@ export class InteractionManager {
 		this._xrConfirmationTarget = null;
 		this._xrInflateTarget?.dispose();
 		this._xrInflateTarget = null;
+		this._xrDeflationPauseTarget?.dispose();
+		this._xrDeflationPauseTarget = null;
+		this._xrPressureConfirmTarget?.dispose();
+		this._xrPressureConfirmTarget = null;
+		this._xrPressureInflateTarget?.dispose();
+		this._xrPressureInflateTarget = null;
+		this._xrPressurePauseTarget?.dispose();
+		this._xrPressurePauseTarget = null;
 		this._xrDialogueTargets.forEach(target => target.dispose());
 		this._xrDialogueTargets = [];
 		this._xrSlateTexture?.dispose();
 		this._xrSlateTexture = null;
-		this._pressureGauge?.dispose();
-		this._pressureGauge = null;
-		this._pressureGaugeTexture?.dispose();
-		this._pressureGaugeTexture = null;
+		this._xrPressureBoardTexture?.dispose();
+		this._xrPressureBoardTexture = null;
+		this._xrPressureBoardRoot?.dispose();
+		this._xrPressureBoardRoot = null;
 		this._xrSlateRoot?.dispose();
 		this._xrSlateRoot = null;
 		this._audioCtx?.close().catch(() => {});

@@ -22,6 +22,7 @@ export class SimulationController {
 	private _clock: () => number;
 	private _decoupledFlow: boolean;
 	private _deflationStartedAt: number | null = null;
+	private _deflationPausedAt: number | null = null;
 	private _deflationStartingPressure = 0;
 
 	public constructor(config: ScenarioConfig = defaultConfig, clock: () => number = () => performance.now(), decoupledFlow = false) {
@@ -38,6 +39,7 @@ export class SimulationController {
 
 	public restart(): void {
 		this._deflationStartedAt = null;
+		this._deflationPausedAt = null;
 		this._deflationStartingPressure = 0;
 		this._state = {
 			config: structuredClone(this._initialConfig), currentStepId: auscultatoryScenario[0].id,
@@ -83,9 +85,23 @@ export class SimulationController {
 
 	public getSnapshot(): SessionState { return structuredClone(this._state); }
 	public getCuffPressure(): number { return this._state.instruments.cuffPressure; }
+	public isDeflationActive(): boolean { return this._deflationStartedAt !== null; }
+	public isDeflationPaused(): boolean { return this._deflationPausedAt !== null; }
+
+	public toggleDeflationPause(now = this._clock()): boolean {
+		if (this._deflationStartedAt === null) return false;
+		if (this._deflationPausedAt === null) {
+			this.advancePressure(now);
+			this._deflationPausedAt = now;
+		} else {
+			this._deflationStartedAt += now - this._deflationPausedAt;
+			this._deflationPausedAt = null;
+		}
+		return true;
+	}
 
 	public advancePressure(now = this._clock()): boolean {
-		if (this._deflationStartedAt === null) return false;
+		if (this._deflationStartedAt === null || this._deflationPausedAt !== null) return false;
 		const nextPressure = Math.max(0, this._deflationStartingPressure - ((now - this._deflationStartedAt) / 1000) * parameters.deflation.mmHgPerSecond);
 		if (Math.abs(nextPressure - this._state.instruments.cuffPressure) < 0.05) return false;
 		this._state.instruments.cuffPressure = nextPressure;
@@ -132,10 +148,12 @@ export class SimulationController {
 			|| event.type === "remaining-air-released" || event.type === "sounds-at-zero-confirmed") state.instruments.cuffPressure = event.value as number;
 		if (event.type === "deflation-started") {
 			this._deflationStartedAt = now;
+			this._deflationPausedAt = null;
 			this._deflationStartingPressure = state.instruments.cuffPressure;
 		}
 		if (event.type === "remaining-air-released" || event.type === "sounds-at-zero-confirmed" || action.rule === "release-start-timer") {
 			this._deflationStartedAt = null;
+			this._deflationPausedAt = null;
 			this._deflationStartingPressure = 0;
 		}
 		if (action.rule === "inflate") {
