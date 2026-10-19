@@ -94,6 +94,7 @@ export class App {
 	private _scene: Scene | null = null;
 	private _simulation: SimulationController | null = null;
 	private _interactionManager: InteractionManager | null = null;
+	private _xr: XR | null = null;
 	private _simulatedOffsetMs = 0;
 	private _menu: StartMenu | null = null;
 	private _loading = false;
@@ -179,11 +180,20 @@ export class App {
 				});
 			}
 			this._scene = new Scene(this._engine);
-			await this._handleLoad();
+			await this._handleLoad(config);
 			if (this._disposed) throw new Error("A aplicação foi encerrada.");
 			this._simulation = simulation;
 			this._interactionManager = new InteractionManager(this._scene, this);
-			this._engine.runRenderLoop(() => { this._scene?.render(); });
+			this._xr?.setStethoscopeInteractionHandlers(
+				() => this._interactionManager?.canGrabStethoscope() ?? false,
+				position => this._interactionManager?.handleStethoscopeRelease(position) ?? false
+			);
+			this._engine.runRenderLoop(() => {
+				const now = this.getSimulatedTime();
+				this._simulation?.advancePressure(now);
+				if (this._simulation) this._interactionManager?.updatePressureDisplay(this._simulation.getCuffPressure());
+				this._scene?.render();
+			});
 			// The menu reveals the canvas after this promise settles.
 			requestAnimationFrame(this._handleResize);
 		} catch (error) {
@@ -209,13 +219,14 @@ export class App {
 		this._engine?.stopRenderLoop();
 		this._interactionManager?.dispose();
 		this._interactionManager = null;
+		this._xr = null;
 		this._simulatedOffsetMs = 0;
 		this._scene?.dispose();
 		this._scene = null;
 		this._simulation = null;
 	}
 
-	private async _handleLoad(): Promise<void> {
+	private async _handleLoad(config: ScenarioConfig): Promise<void> {
 		if (!this._engine || !this._scene) {
 			return;
 		}
@@ -373,21 +384,6 @@ export class App {
 			}
 		}
 
-		// Dedicated invisible collision volumes covering the chair body and accessory tray
-		// from floor level up to standing height, preventing the player from walking through
-		// the chair or floating over low cushions during first-person locomotion.
-		const chairBodyCollider = CreateBox("chair-collider-body", { width: 0.82, depth: 0.74, height: 1.60 }, scene);
-		chairBodyCollider.position.set(-1.19, 0.80, -1.19);
-		chairBodyCollider.checkCollisions = true;
-		chairBodyCollider.visibility = 0;
-		chairBodyCollider.isPickable = false;
-
-		const chairTrayCollider = CreateBox("chair-collider-tray", { width: 0.62, depth: 0.39, height: 1.60 }, scene);
-		chairTrayCollider.position.set(-1.15, 0.80, -1.755);
-		chairTrayCollider.checkCollisions = true;
-		chairTrayCollider.visibility = 0;
-		chairTrayCollider.isPickable = false;
-
 		const chairTray = scene.getMeshByName("chair_Object_8") as Mesh | null;
 		if (!chairTray) throw new Error("Bandeja de manguitos não encontrada.");
 		await buildCuffSet(scene, chairTray);
@@ -478,28 +474,39 @@ export class App {
 		armR.isPickable = true;
 		armR.metadata = { assetId: "patient-forearm-direito", logicalTarget: "patient-arm", arm: "direito" };
 
+		const wristL = CreateSphere("patient-wrist-esquerdo", { diameter: 0.12 }, scene);
+		wristL.position.set(-0.85, 0.85, -0.72);
+		wristL.visibility = 0;
+		wristL.isPickable = true;
+		wristL.metadata = { assetId: "patient-wrist-esquerdo", logicalTarget: "patient-wrist", arm: "esquerdo" };
+
 		const wristR = CreateSphere("patient-wrist-direito", { diameter: 0.12 }, scene);
 		wristR.position.set(-0.98, 1.085, -1.72);
 		wristR.visibility = 0;
 		wristR.isPickable = true;
 		wristR.metadata = { assetId: "patient-wrist-direito", logicalTarget: "patient-wrist", arm: "direito" };
+		const selectedArmAnchor = config.arm === "esquerdo" ? armL : armR;
+		const selectedWristAnchor = config.arm === "esquerdo" ? wristL : wristR;
 
-		// Pre-fitted cuff sleeve on patient's right arm (baseline clinical setup)
+		// Simple fitted cuff placeholder; replace with a patient-matched asset later.
 		const cuffSleeve = CreateCylinder("fitted-cuff-sleeve", {
 			height: 0.14,
 			diameter: 0.165,
 			tessellation: 24,
 		}, scene);
-		cuffSleeve.position.set(-0.98, 1.085, -1.38);
+		cuffSleeve.position.set(
+			selectedArmAnchor.position.x,
+			selectedArmAnchor.position.y,
+			selectedArmAnchor.position.z + 0.12
+		);
 		cuffSleeve.rotation.x = Math.PI / 2;
 		cuffSleeve.isPickable = true;
 		cuffSleeve.checkCollisions = true;
-		cuffSleeve.metadata = { assetId: "fitted-cuff-sleeve", logicalTarget: "cuff" };
-
-		const cuffMat = new StandardMaterial("fitted-cuff-material", scene);
-		cuffMat.diffuseColor = Color3.FromHexString("#1B4965");
-		cuffMat.specularColor = new Color3(0.2, 0.2, 0.2);
-		cuffSleeve.material = cuffMat;
+		cuffSleeve.metadata = { assetId: "fitted-cuff-sleeve", logicalTarget: "cuff", arm: config.arm };
+		const cuffMaterial = new StandardMaterial("fitted-cuff-material", scene);
+		cuffMaterial.diffuseColor = Color3.FromHexString("#1B4965");
+		cuffMaterial.specularColor = new Color3(0.2, 0.2, 0.2);
+		cuffSleeve.material = cuffMaterial;
 
 		// Camera placed in the center of the doctor's office
 		const camera = new UniversalCamera("clinical-camera", new Vector3(0, 1.6, 0.5), scene);
@@ -545,8 +552,8 @@ export class App {
 					{ name: "sphygmomanometer", position: [-2.04, trayTopY, -0.88], logicalTarget: "gauge" },
 					{ name: "sanitizer", position: [-2.04, desktopY, -0.62], logicalTarget: "hygiene-station" },
 					{ name: "stethoscope", position: [-2.04, trayTopY, -1.17], logicalTarget: "stethoscope" },
-					{ name: "patient-arm", position: [-0.98, 1.085, -1.50], logicalTarget: "patient-arm" },
-					{ name: "patient-wrist", position: [-0.98, 1.085, -1.72], logicalTarget: "patient-wrist" },
+					{ name: "patient-arm", position: selectedArmAnchor.position.asArray(), logicalTarget: "patient-arm" },
+					{ name: "patient-wrist", position: selectedWristAnchor.position.asArray(), logicalTarget: "patient-wrist" },
 					{ name: "cuffs", position: [-1.15, 0.85, -1.75], logicalTarget: "cuffs" },
 				],
 			},
@@ -554,8 +561,8 @@ export class App {
 		};
 
 		// Initialize WebXR (hand tracking, teleportation, motion controllers)
-		const xr = new XR(scene);
-		await xr.onStart();
+		this._xr = new XR(scene);
+		await this._xr.onStart();
 	}
 
 	private _placeModelOnSurface(root: TransformNode, center: Vector3, logicalTarget: string): void {
@@ -617,8 +624,8 @@ export class App {
 			prontuario: { pos: [-0.07, 1.6, -1.2], lookAt: [-0.07, 0.88, -1.82] },
 			mesa: { pos: [-1.50, 1.60, -0.50], lookAt: [-2.04, 1.0, -1.0] },
 			cadeira: { pos: [-0.20, 1.70, -0.35], lookAt: [-1.00, 1.00, -1.15] },
-			esquerdo: { pos: [-0.60, 1.60, -0.65], lookAt: [-0.85, 0.85, -0.95] },
-			direito: { pos: [-0.60, 1.60, -1.80], lookAt: [-0.98, 1.085, -1.50] },
+			esquerdo: { pos: [0.05, 1.60, -0.55], lookAt: [-0.85, 0.85, -0.95] },
+			direito: { pos: [-0.18, 1.60, -1.82], lookAt: [-0.98, 1.085, -1.50] },
 		};
 		const target = targets[station];
 		if (!target) return;

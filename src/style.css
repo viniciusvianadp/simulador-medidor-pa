@@ -95,10 +95,19 @@ select { width: 100%; padding: 14px 16px; border: 1px solid #bdcbc0; background:
 	box-shadow: 0 14px 40px #10251a26;
 	padding: 20px 22px;
 	z-index: 10;
+	pointer-events: none;
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
 	color: #173c34;
+}
+
+.step-guidance-hud button,
+.step-guidance-hud a,
+.step-guidance-hud input,
+.step-guidance-hud select,
+.step-guidance-hud textarea {
+	pointer-events: auto;
 }
 
 .guidance-header {

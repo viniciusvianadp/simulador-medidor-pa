@@ -19,14 +19,26 @@ export function nextMockEvent(controller: SimulationController, clock: MockClock
 	if (!action) throw new Error("Simulação concluída.");
 	const state = controller.getSnapshot();
 	const { config } = state;
+	const observedSystolic = Number(state.observations["identify-systolic:first-sound-recorded"] ?? config.pressure.systolic);
+	const diastolicKey = config.persistentSounds ? "persistent-sounds:muffling-recorded" : "identify-diastolic:sound-disappearance-recorded";
+	const observedDiastolic = Number(state.observations[diastolicKey] ?? config.pressure.diastolic);
 	const record: MeasurementRecord = {
-		...config.pressure, ...(config.persistentSounds ? { zero: 0 as const } : {}),
+		systolic: observedSystolic, diastolic: observedDiastolic, ...(config.persistentSounds ? { zero: 0 as const } : {}),
 		dateTime: "2026-10-02T10:00:00-03:00", arm: config.arm, position: "sentado",
 		professional: "Profissional Exemplo / COREN fictício 000000", performed: true,
 	};
 	let value: ActionValue;
 	switch (action.rule) {
-		case "equals": value = action.expected; break;
+		case "equals": {
+			if (action.type === "sounds-at-zero-confirmed") {
+				while (controller.getCuffPressure() > 0) {
+					clock.advance(100);
+					controller.advancePressure(clock.now());
+				}
+			}
+			value = action.expected;
+			break;
+		}
 		case "materials": value = [...requiredMaterials]; break;
 		case "start-timer": value = true; break;
 		case "release-start-timer": value = 0; break;
@@ -40,11 +52,47 @@ export function nextMockEvent(controller: SimulationController, clock: MockClock
 		case "circumference": value = config.patient.armCircumferenceCm; break;
 		case "cuff": value = eligibleCuffs(config.patient.armCircumferenceCm)[0]; break;
 		case "offset": value = parameters.cuffOffset.minCm; break;
-		case "pulse-disappearance": case "systolic": value = config.pressure.systolic; break;
-		case "diastolic": value = config.pressure.diastolic; break;
+		case "pulse-disappearance": value = config.pressure.systolic; break;
+		case "systolic": {
+			if (action.type === "first-sound-recorded") {
+				while (controller.getCuffPressure() > config.pressure.systolic) {
+					clock.advance(100);
+					controller.advancePressure(clock.now());
+				}
+				value = Math.round(controller.getCuffPressure() / 2) * 2;
+			} else value = config.pressure.systolic;
+			break;
+		}
+		case "diastolic": {
+			if (action.type === "sound-disappearance-recorded") {
+				while (controller.getCuffPressure() > config.pressure.diastolic) {
+					clock.advance(100);
+					controller.advancePressure(clock.now());
+				}
+				value = Math.round(controller.getCuffPressure() / 2) * 2;
+			} else value = config.pressure.diastolic;
+			break;
+		}
 		case "inflate": value = state.instruments.cuffPressure + parameters.inflation.increment; break;
+		case "inflate-stop": value = true; break;
 		case "deflation": value = parameters.deflation.mmHgPerSecond; break;
-		case "confirmation": value = config.pressure.diastolic - parameters.confirmation.minDrop; break;
+		case "muffling": {
+			while (controller.getCuffPressure() > config.pressure.diastolic) {
+				clock.advance(100);
+				controller.advancePressure(clock.now());
+			}
+			value = Math.round(controller.getCuffPressure() / 2) * 2;
+			break;
+		}
+		case "confirmation": {
+			const target = config.pressure.diastolic - parameters.confirmation.minDrop;
+			while (controller.getCuffPressure() > target) {
+				clock.advance(100);
+				controller.advancePressure(clock.now());
+			}
+			value = Math.round(controller.getCuffPressure() / 2) * 2;
+			break;
+		}
 		case "readings": case "documentation": value = record; break;
 		default: {
 			const unhandled: never = action;

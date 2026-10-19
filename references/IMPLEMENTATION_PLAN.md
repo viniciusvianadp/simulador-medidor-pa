@@ -47,11 +47,11 @@ Use an explicit progression controller: an action completes a step only when its
 
 **Acceptance:** the 26-step single-arm sequence and its persistent-sounds branch can be exercised with mock interaction events before adding detailed models.
 
-**2026 follow-up (pending):** extend session orchestration for a first assessment with separate left/right arm circumference, cuff, pressure, sound-persistence flag, observations, and records. Preserve the original 26 source IDs within each measurement attempt. Gate the next measurement by the separate minimum one-minute interval, then require comparison and reference-arm selection before completing the assessment. The existing single-arm fixtures remain measurement-level tests and must not be presented as a complete first assessment.
+**Scope decision (2026-10-19):** this project implements one measured arm per session. Do not add bilateral session orchestration, a second arm pass, or reference-arm selection. The source PDF's first-assessment note remains source documentation only.
 
 ### 2. Build the Portuguese Start Menu ✓
 
-Implement the reference-inspired menu with the title, initial scenario, brief instructions, and start action. Start should initialize a fresh session. Provide a way to restart or return to the menu. When bilateral orchestration is implemented, distinguish “Primeira avaliação — dois braços” from a subsequent measurement using the recorded reference arm; do not expose an unimplemented mode. Keep labels and prompts centrally organized for consistent Portuguese terminology.
+Implement the reference-inspired menu with the title, initial scenario, brief instructions, and start action. Start should initialize a fresh session. Provide a way to restart or return to the menu. Keep labels and prompts centrally organized for consistent Portuguese terminology.
 
 **Acceptance:** starting and restarting reliably reset patient, instruments, and progress.
 
@@ -245,7 +245,7 @@ Implement steps 14–22 with interactive visual and auditory auscultatory mechan
     - Phase V (Diastolic): Complete cessation/disappearance of sounds (or persistent muffling to zero in persistent sounds branch).
   - Gate audio playback to active auscultation (stethoscope earpieces placed and chestpiece on cubital fossa).
 - [ ] **Stethoscope Manipulation & Cubital Placement:** Visual chestpiece positioning onto the cubital fossa proxy during auscultation.
-- [ ] **Bilateral Assessment Orchestration (Future extension):** Orchestrate first assessment on both arms with minimum one-minute interval between measurements and reference-arm comparison.
+- [ ] **Interaction and movement feedback:** Make item movement follow accepted learner actions, beginning with stethoscope pickup and placement. Cuff visual changes are deferred.
 
 **Acceptance:** gauge needle and synthesized Korotkoff sounds remain synchronized with scenario pressure values and deflation rate.
 
@@ -265,7 +265,7 @@ Implement steps 24–26, cuff removal, nursing documentation, and the comprehens
 
 ### 8. Validate the Full Scenario
 
-Run `npx tsc --noEmit` and `npm run build`. Manually test menu navigation, scene loading, both hands, object ownership, tracking recovery, cues, timers, cuff placement, pressure/audio synchronization, the conditional branch on either arm, bilateral interval enforcement, reference-arm selection, and restart on compatible XR hardware. Record browser/device and untested behavior. When implementing the progression controller, add focused automated tests for prerequisites, timers, branching, and reset; the repository now uses Node's built-in test runner via `npm test`, plus `npm run simulation:mock` for all single-arm fixtures. Extend these for bilateral orchestration when implemented.
+Run `npx tsc --noEmit` and `npm run build`. Manually test menu navigation, scene loading, both hands, object ownership, tracking recovery, cues, timers, pressure/audio synchronization, the conditional branch, and restart on compatible XR hardware. Record browser/device and untested behavior. When implementing the progression controller, add focused automated tests for prerequisites, timers, branching, and reset; the repository now uses Node's built-in test runner via `npm test`, plus `npm run simulation:mock` for all single-arm fixtures.
 
 Compare each implemented step with the supplied PDF and review clinical content with the project’s subject-matter reviewer before treating the scenario as validated teaching material.
 
@@ -306,7 +306,7 @@ The PDF also lists the five moments of hand hygiene and cuff bladder sizing guid
 
 ## 2026 Checklist Migration and Supporting Tables
 
-The active source is `references/checklist_v2.pdf`. The bilateral first-assessment instruction is an observation after item 26, not a replacement for the persistent-sounds branch.
+The active source is `references/checklist_v2.pdf`. Its bilateral first-assessment instruction is preserved as source context; the implemented simulator scope is one arm per session.
 
 | Changed source requirement | Implementation impact / status |
 | --- | --- |
@@ -316,7 +316,7 @@ The active source is `references/checklist_v2.pdf`. The bilateral first-assessme
 | Item 15: forward-curvature wording removed | Updated prompts; no invented orientation scoring criterion. |
 | Item 16: bell or diaphragm | Both choices are accepted explicitly; the placement event is now `chestpiece-placed` with value `bell` or `diaphragm`. Stable checklist step ID `place-bell` is retained for compatibility. |
 | Table 1: revised ranges and all bladder dimensions; added Coxa | Updated seven-entry data table and cuff-boundary tests. The former 21 cm overlap case now accepts only Infantil. |
-| Observation after item 26: first assessment on both arms, ≥1 minute between measurements, higher-pressure reference arm | Added to the plan, supporting content, and timing parameters. Bilateral session orchestration, fixtures, reference selection, and UI remain pending; current mocks are single-arm measurements. |
+| Observation after item 26: first assessment on both arms, ≥1 minute between measurements, higher-pressure reference arm | Preserved in source transcription only. Project scope decision: do not implement bilateral orchestration or reference-arm selection. |
 | Table 2: office BP classification from age 18 | Literal supporting data added. Automated interpretation remains pending source clarification. |
 
 ### Table 1 — Current Cuff Asset and Selection Specification

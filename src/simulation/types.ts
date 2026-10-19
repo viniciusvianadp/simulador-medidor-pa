@@ -23,7 +23,7 @@ export type ValidationRule =
 	| "exercise" | "intake" | "start-timer" | "rest" | "circumference"
 	| "cuff" | "offset" | "pulse-disappearance" | "systolic" | "diastolic"
 	| "release-start-timer" | "estimation-wait" | "inflate" | "deflation"
-	| "confirmation" | "readings" | "documentation" | "chestpiece";
+	| "inflate-stop" | "muffling" | "confirmation" | "readings" | "documentation" | "chestpiece";
 
 // Only equality has a literal expected value; other rules derive requirements from state.
 export type ActionCondition =

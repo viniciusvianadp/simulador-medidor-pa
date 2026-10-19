@@ -49,7 +49,7 @@ test("ordinary path completes only applicable objectives and leaves cuff removed
 	assert.equal(Object.values(session.steps).filter(step => step.status === "completed").length, 25);
 	assert.equal(session.instruments.cuffPressure, 0);
 	assert.equal(session.instruments.cuffAttached, false);
-	assert.equal(elapsedMs, 360000);
+	assert.equal(elapsedMs, 407000);
 	assert.equal(timeLabel, "Tempo simulado");
 });
 test("persistent sounds branch occurs during deflation and records three values", () => {
@@ -151,13 +151,13 @@ test("both chestpiece choices complete the procedure and reject the old boolean 
 	for (const value of ["bell", "diaphragm"]) {
 		const context = setup();
 		until(context, "cubital-artery-palpated");
-		assert.equal(context.controller.dispatch({ type: "chestpiece-placed", target: "stethoscope", value }).accepted, false);
+		assert.equal(context.controller.dispatch({ type: "chestpiece-placed", target: "patient-arm", value }).accepted, false);
 		until(context, "chestpiece-placed");
 		assert.equal(context.controller.dispatch({ type: "bell-placed", target: "stethoscope", value: true }).accepted, false);
 		for (const invalid of [true, "earpieces", ""]) {
-			assert.equal(context.controller.dispatch({ type: "chestpiece-placed", target: "stethoscope", value: invalid }).accepted, false);
+			assert.equal(context.controller.dispatch({ type: "chestpiece-placed", target: "patient-arm", value: invalid }).accepted, false);
 		}
-		assert.equal(context.controller.dispatch({ type: "chestpiece-placed", target: "stethoscope", value }).accepted, true);
+		assert.equal(context.controller.dispatch({ type: "chestpiece-placed", target: "patient-arm", value }).accepted, true);
 		until(context, "measurement-documented");
 		assert.equal(context.controller.dispatch(nextMockEvent(context.controller, context.clock)).accepted, true);
 		assert.equal(context.controller.getSnapshot().completed, true);

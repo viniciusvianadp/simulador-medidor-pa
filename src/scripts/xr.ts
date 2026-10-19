@@ -6,9 +6,21 @@ import { WebXRState } from "@babylonjs/core/XR/webXRTypes";
 import "@babylonjs/core/XR/features/WebXRControllerMovement";
 
 import { WebXRHandJoint, WebXRHandTracking } from "@babylonjs/core/XR/features/WebXRHandTracking";
+import type { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 
 export default class XR {
+    private _canGrabStethoscope: (() => boolean) | null = null;
+    private _onStethoscopeRelease: ((position: Vector3) => boolean) | null = null;
+
     public constructor(public scene: Scene) {}
+
+    public setStethoscopeInteractionHandlers(
+        canGrab: () => boolean,
+        onRelease: (position: Vector3) => boolean
+    ): void {
+        this._canGrabStethoscope = canGrab;
+        this._onStethoscopeRelease = onRelease;
+    }
 
     public async onStart(): Promise<void> {
         const ground = this.scene.getMeshByName("ground");
@@ -80,7 +92,8 @@ export default class XR {
                 xr.teleportation.addSnapPoint(new Vector3(0.79, 0, -1.6));    // 2: Estação de higiene (dispensador)
                 xr.teleportation.addSnapPoint(new Vector3(-0.07, 0, -1.3));   // 3: Prontuário / Balcão
                 xr.teleportation.addSnapPoint(new Vector3(-1.50, 0, -0.50));  // 4: Mesa & Instrumentos
-                xr.teleportation.addSnapPoint(new Vector3(-0.20, 0, -0.35));  // 5: Cadeira do paciente
+                xr.teleportation.addSnapPoint(new Vector3(0.05, 0, -0.55));   // Aproximação pelo braço esquerdo
+                xr.teleportation.addSnapPoint(new Vector3(-0.18, 0, -1.82));  // Aproximação pelo braço direito
             }
 
             const handTracking =
@@ -102,6 +115,7 @@ export default class XR {
 
             // Only one hand can hold the box at a time.
             let grabbingHand: string | null = null;
+            let stethoscopeHand: string | null = null;
 
             handTracking.onHandAddedObservable.add((hand) => {
                 const handedness =
@@ -110,6 +124,9 @@ export default class XR {
                 console.log("Hand added:", handedness);
 
                 let wasPinching = false;
+                let grabbedStethoscope: TransformNode | null = null;
+                let stethoscopeOriginalParent: TransformNode | null = null;
+                let stethoscopeOriginalPosition: Vector3 | null = null;
 
                 const PINCH_START_DISTANCE = 0.025;
                 const PINCH_END_DISTANCE = 0.04;
@@ -160,44 +177,45 @@ export default class XR {
                             .add(indexPosition)
                             .scale(0.5);
 
-                        const boxPosition =
-                            box.getAbsolutePosition();
+                        // Allow the learner to physically carry the stethoscope
+                        // only during a step that asks them to place it.
+                        const stethoscope = this.scene.getTransformNodeByName("stethoscope-root");
+                        if (stethoscope && stethoscopeHand === null && this._canGrabStethoscope?.()) {
+                            stethoscope.computeWorldMatrix(true);
+                            const bounds = stethoscope.getHierarchyBoundingVectors(true);
+                            const stethoscopeCenter = bounds.min.add(bounds.max).scale(0.5);
+                            const radius = bounds.max.subtract(bounds.min).length() * 0.5;
+                            if (Vector3.Distance(pinchPosition, stethoscopeCenter) <= Math.max(radius, 0.12) + 0.12) {
+                                grabbedStethoscope = stethoscope;
+                                stethoscopeOriginalParent = stethoscope.parent as TransformNode | null;
+                                stethoscopeOriginalPosition = stethoscope.getAbsolutePosition().clone();
+                                stethoscopeHand = handedness;
+                                stethoscope.setParent(indexTip, true);
+                            }
+                        }
 
-                        const boxRadius =
-                            box.getBoundingInfo()
-                                .boundingSphere.radiusWorld;
+                        if (!grabbedStethoscope) {
+                            const boxPosition = box.getAbsolutePosition();
 
-                        const distanceToBox =
-                            Vector3.Distance(
-                                pinchPosition,
-                                boxPosition
-                            );
+                            const boxRadius = box.getBoundingInfo().boundingSphere.radiusWorld;
 
-                        console.log(
-                            "GRAB CHECK",
-                            handedness,
-                            {
+                            const distanceToBox = Vector3.Distance(pinchPosition, boxPosition);
+
+                            console.log("GRAB CHECK", handedness, {
                                 pinchPosition,
                                 boxPosition,
                                 distanceToBox,
                                 boxRadius,
+                            });
+
+                            if (distanceToBox < boxRadius + 10) {
+                                grabbingHand = handedness;
+
+                                // Attach the cube directly to the index-finger joint.
+                                box.setParent(indexTip);
+
+                                console.log("BOX GRABBED:", handedness);
                             }
-                        );
-
-                        if (
-                            distanceToBox <
-                            boxRadius + 10
-                        ) {
-                            grabbingHand = handedness;
-
-                            //Attach the cube directly to the
-                            //index-finger joint.
-                            box.setParent(indexTip);
-
-                            console.log(
-                                "BOX GRABBED:",
-                                handedness
-                            );
                         }
                     }
 
@@ -262,6 +280,22 @@ export default class XR {
                                 "BOX RELEASED:",
                                 handedness
                             );
+                        }
+
+                        if (stethoscopeHand === handedness && grabbedStethoscope) {
+                            const releasePosition = thumbPosition
+                                .add(indexPosition)
+                                .scale(0.5);
+                            grabbedStethoscope.setParent(stethoscopeOriginalParent, true);
+                            grabbedStethoscope.setAbsolutePosition(releasePosition);
+                            const accepted = this._onStethoscopeRelease?.(releasePosition) ?? false;
+                            if (!accepted && stethoscopeOriginalPosition) {
+                                grabbedStethoscope.setAbsolutePosition(stethoscopeOriginalPosition);
+                            }
+                            grabbedStethoscope = null;
+                            stethoscopeOriginalParent = null;
+                            stethoscopeOriginalPosition = null;
+                            stethoscopeHand = null;
                         }
                     }
                 });

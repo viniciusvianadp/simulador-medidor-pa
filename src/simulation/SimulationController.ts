@@ -21,6 +21,8 @@ export class SimulationController {
 	private _initialConfig: ScenarioConfig;
 	private _clock: () => number;
 	private _decoupledFlow: boolean;
+	private _deflationStartedAt: number | null = null;
+	private _deflationStartingPressure = 0;
 
 	public constructor(config: ScenarioConfig = defaultConfig, clock: () => number = () => performance.now(), decoupledFlow = false) {
 		if (!Number.isFinite(config.pressure.systolic) || !Number.isFinite(config.pressure.diastolic)
@@ -35,6 +37,8 @@ export class SimulationController {
 	}
 
 	public restart(): void {
+		this._deflationStartedAt = null;
+		this._deflationStartingPressure = 0;
 		this._state = {
 			config: structuredClone(this._initialConfig), currentStepId: auscultatoryScenario[0].id,
 			actionIndex: 0, steps: Object.fromEntries(auscultatoryScenario.map((step, index) => [step.id, { status: index === 0 ? "active" : "pending" }])),
@@ -78,6 +82,15 @@ export class SimulationController {
 	}
 
 	public getSnapshot(): SessionState { return structuredClone(this._state); }
+	public getCuffPressure(): number { return this._state.instruments.cuffPressure; }
+
+	public advancePressure(now = this._clock()): boolean {
+		if (this._deflationStartedAt === null) return false;
+		const nextPressure = Math.max(0, this._deflationStartingPressure - ((now - this._deflationStartedAt) / 1000) * parameters.deflation.mmHgPerSecond);
+		if (Math.abs(nextPressure - this._state.instruments.cuffPressure) < 0.05) return false;
+		this._state.instruments.cuffPressure = nextPressure;
+		return true;
+	}
 
 	public isDecoupledFlow(): boolean { return this._decoupledFlow; }
 
@@ -87,17 +100,23 @@ export class SimulationController {
 	}
 
 	public dispatch(event: InteractionEvent): { accepted: boolean; feedback: string } {
+		const now = this._clock();
+		this.advancePressure(now);
 		const state = this._state;
 		const step = auscultatoryScenario.find(item => item.id === state.currentStepId);
 		const action = this.getCurrentAction();
-		const now = this._clock();
 		const prerequisitesMet = step?.prerequisites.every(id => {
 			if (this._decoupledFlow && CONVERSATION_STEP_IDS.includes(id)) {
 				return true;
 			}
 			return ["completed", "skipped"].includes(state.steps[id].status);
 		});
-		const accepted = !!action && !!prerequisitesMet && event.type === action.type && event.target === action.target && this._validate(action, event, now);
+		const extraInflation = step?.id === "inflate-for-auscultation" && action?.rule === "inflate-stop"
+			&& event.type === "rapid-inflation-increment" && event.target === "cuff";
+		const accepted = !!action && !!prerequisitesMet && (
+			(event.type === action.type && event.target === action.target && this._validate(action, event, now))
+			|| (extraInflation && this._validate({ ...action, type: "rapid-inflation-increment", rule: "inflate" }, event, now))
+		);
 		const feedback = accepted ? "Ação realizada corretamente." : action?.feedback ?? "A simulação já foi concluída. Reinicie para tentar novamente.";
 		state.attempts.push({ timestamp: now, stepId: state.currentStepId, event: structuredClone(event), accepted, feedback });
 		if (!accepted || !step || !action) return { accepted, feedback };
@@ -109,10 +128,22 @@ export class SimulationController {
 		if (action.rule === "cuff") state.instruments.selectedCuff = event.value as string;
 		if (event.type === "cuff-fitted") state.instruments.cuffAttached = true;
 		if (event.type === "cuff-removed") state.instruments.cuffAttached = false;
-		if (["inflate", "pulse-disappearance", "systolic", "diastolic", "confirmation", "release-start-timer"].includes(action.rule)
+		if (action.rule === "inflate" || extraInflation || ["pulse-disappearance", "release-start-timer"].includes(action.rule)
 			|| event.type === "remaining-air-released" || event.type === "sounds-at-zero-confirmed") state.instruments.cuffPressure = event.value as number;
-		// Each increment is validated, but the inflation objective remains active until the target is reached.
-		if (action.rule === "inflate" && state.instruments.cuffPressure < this._estimate() + parameters.inflation.minAboveEstimate) return { accepted, feedback };
+		if (event.type === "deflation-started") {
+			this._deflationStartedAt = now;
+			this._deflationStartingPressure = state.instruments.cuffPressure;
+		}
+		if (event.type === "remaining-air-released" || event.type === "sounds-at-zero-confirmed" || action.rule === "release-start-timer") {
+			this._deflationStartedAt = null;
+			this._deflationStartingPressure = 0;
+		}
+		if (action.rule === "inflate") {
+			if (state.instruments.cuffPressure < this._estimate() + parameters.inflation.minAboveEstimate) return { accepted, feedback };
+			state.actionIndex++;
+			return { accepted, feedback };
+		}
+		if (extraInflation) return { accepted, feedback };
 		state.actionIndex++;
 		if (state.actionIndex === step.completionConditions.length) this._completeStep(step.checklistNumber);
 		return { accepted, feedback };
@@ -238,8 +269,11 @@ export class SimulationController {
 				};
 			}
 
+			const systolic = Number(state.observations["identify-systolic:first-sound-recorded"] ?? config.pressure.systolic);
+			const diastolicKey = config.persistentSounds ? "persistent-sounds:muffling-recorded" : "identify-diastolic:sound-disappearance-recorded";
+			const diastolic = Number(state.observations[diastolicKey] ?? config.pressure.diastolic);
 			const zeroPart = config.persistentSounds ? " (sons persistentes até zero)" : "";
-			const dialogueText = `Muito obrigado por me informar minha pressão (${config.pressure.systolic}/${config.pressure.diastolic} mmHg${zeroPart}) e pelas orientações!`;
+			const dialogueText = `Muito obrigado por me informar minha pressão (${systolic}/${diastolic} mmHg${zeroPart}) e pelas orientações!`;
 			return { accepted: true, feedback, dialogueText };
 		}
 
@@ -277,12 +311,16 @@ export class SimulationController {
 			case "cuff": return typeof value === "string" && eligibleCuffs(config.patient.armCircumferenceCm).includes(value);
 			case "offset": return numeric && value >= parameters.cuffOffset.minCm && value <= parameters.cuffOffset.maxCm;
 			case "pulse-disappearance": return numeric && value >= config.pressure.systolic;
-			case "systolic": return value === config.pressure.systolic;
-			case "diastolic": return value === config.pressure.diastolic;
+			case "systolic": return numeric && Math.abs(value - config.pressure.systolic) <= 2;
+			case "diastolic": return numeric && Math.abs(value - config.pressure.diastolic) <= 2;
 			case "release-start-timer": return value === 0;
 			case "estimation-wait": return value === true && elapsed >= parameters.estimationWait.minMs;
 			case "chestpiece": return value === "bell" || value === "diaphragm";
 			case "inflate": return numeric && value === instruments.cuffPressure + parameters.inflation.increment && value <= this._estimate() + parameters.inflation.maxAboveEstimate;
+			case "inflate-stop": return value === true
+				&& instruments.cuffPressure >= this._estimate() + parameters.inflation.minAboveEstimate
+				&& instruments.cuffPressure <= this._estimate() + parameters.inflation.maxAboveEstimate;
+			case "muffling": return numeric && Math.abs(value - config.pressure.diastolic) <= 2;
 			case "deflation": return value === parameters.deflation.mmHgPerSecond;
 			case "confirmation": return numeric && config.pressure.diastolic - value >= parameters.confirmation.minDrop && config.pressure.diastolic - value <= parameters.confirmation.maxDrop;
 			case "readings": return this._validReadings(value);
@@ -304,7 +342,10 @@ export class SimulationController {
 		if (!value || typeof value !== "object") return false;
 		const record = value as MeasurementRecord;
 		const { pressure, persistentSounds } = this._state.config;
-		return record.systolic === pressure.systolic && record.diastolic === pressure.diastolic
+		const systolic = Number(this._state.observations["identify-systolic:first-sound-recorded"] ?? pressure.systolic);
+		const diastolicKey = persistentSounds ? "persistent-sounds:muffling-recorded" : "identify-diastolic:sound-disappearance-recorded";
+		const diastolic = Number(this._state.observations[diastolicKey] ?? pressure.diastolic);
+		return record.systolic === systolic && record.diastolic === diastolic
 			&& (persistentSounds ? record.zero === 0 : record.zero === undefined);
 	}
 

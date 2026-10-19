@@ -1,0 +1,100 @@
+# Implementation Backlog: Usability and Interaction Follow-ups
+
+This backlog captures issues reported during a walkthrough of the current single-arm auscultatory flow. Implement and review each item independently, updating status and evidence as work progresses. The implementation plan remains the source for the overall scope and clinical workflow.
+
+## Reported issues
+
+### B1. Make patient dialogue selectable in immersive WebXR — investigate first
+
+**Observed:** In the Immersive Web Emulator, pinching the blue dialogue sphere opens the patient-interaction slate, but the learner cannot choose a topic. Desktop/browser interaction works. The screenshot `Screenshot from 2026-10-16 14-13-34.png` (in `/tmp` at report time) shows the slate and emulated hands, but does not capture a selection attempt.
+
+**Expected:** The learner can open the dialogue and select each topic in the immersive emulator and on supported headsets. Determine whether selection is intended through hand ray/pinch, controller ray/select, or a supported DOM overlay; make the supported input clear in the interface. Do not assume a physical headset is required: the implementation plan explicitly includes emulator validation.
+
+**Acceptance:** Select all available dialogue topics using the documented emulator input; verify the patient response and completion state update. Record emulator/browser and headset coverage separately.
+
+**Implementation:** Added pickable XR targets aligned with all four topic rows and a close target. Selection uses the scene's existing pointer-pick path and dispatches through the existing lateral dialogue flow. The slate labels the rows as selectable. Emulator and physical-headset runtime validation remains pending.
+
+### B2. Reach and interact with the supported measurement arm
+
+**Observed:** The learner cannot comfortably reach the patient's right arm because the chair and adjacent table obstruct movement. During arm interactions, the instruction slate/card can cover the target.
+
+**Expected:** The right arm selected for measurement is posed on the support at heart level; its required interaction zones are reachable from a clear approach position, and guidance does not occlude the target or the learner's hand/ray at the point of action. Other-arm interaction is outside the current single-arm workflow.
+
+**Acceptance:** From the normal spawn and the patient station, approach and interact with the supported measurement arm without passing through furniture or fighting collisions. Check desktop and immersive views. Adjust furniture/collision footprint, station/teleport positions, and guidance placement as needed.
+
+**Implementation:** Removed oversized invisible chair/tray collision boxes while retaining collision on the actual chair meshes; moved the left/right approach and teleport points into clear floor areas; made arm, wrist, cuff, and the pre-fitted sleeve consistently use the configured measurement arm, rejecting interaction with the other arm; positioned the XR slate in front of the learner and clamped it inside the room bounds; made non-control areas of the browser guidance HUD pass pointer input through to the scene. Emulator, browser walkthrough, and headset validation remain pending.
+
+**Follow-up correction:** The mannequin pose and raised armrest currently support only the right arm at heart level. All offered single-arm patient cases now measure that same arm, keeping the pose, cuff, and interaction targets aligned. A left-arm or bilateral case must wait until the scene supports matching poses and armrests.
+
+### B3. Show progress within repeated multi-action steps
+
+**Observed:** Some steps require several successful actions (for example, repeated stethoscope cleaning or pressure measurement), but the guidance does not clearly show how many remain. Learners may repeat an action because they cannot tell whether it registered.
+
+**Expected:** Guidance shows within-step progress, such as “Ação 2 de 3”, and confirms accepted actions while keeping the current step and next action clear. Failed attempts should explain what is still needed without incrementing progress.
+
+**Acceptance:** Exercise each multi-action step, including repeated hygiene and pressure measurement; confirm progress increments exactly once per accepted action, remains stable on rejected/duplicate attempts, and reaches completion at the correct point in both desktop HUD and XR slate.
+
+### B4. Clarify when to perform patient communication
+
+**Clarification:** The numbered physical guidance already communicates the sequence: for example, when it shows step 8, the learner can infer that steps 5, 6, and 7 are patient communication. No additional communication timing cue is requested at this time. Keep this note as context if the step sequence or guidance presentation changes.
+
+**Expected:** Preserve the current progress percentage and non-blocking communication model. Do not add redundant timing cues or turn dialogue into a hard prerequisite for physical actions.
+
+**Acceptance:** Physical progress percentage and debrief timing/omission scoring remain intact. No communication timing change is currently required unless walkthroughs identify ambiguity.
+
+### B5. Make instrument interactions and movement visible
+
+**Observed:** Interactions advance the scenario, but objects appear stationary: the cuff is not visibly removed, the stethoscope is not picked up/placed, and the sphygmomanometer does not visibly respond during measurement.
+
+**Expected:** Accepted actions produce clear, coherent visual feedback. The learner wears the stethoscope, so its model should leave view after earpiece placement and remain hidden; chestpiece placement is represented by interacting with the cubital area. The sphygmomanometer should be visible beside the patient, with pressure observation/recording steps available through explicit confirmation controls. Cuff visual changes are deferred.
+
+**Asset note:** The current fitted cuff is a simple blue cylinder sketch positioned on the selected arm. The existing cuff GLB depicts folded storage cuffs, so the final fitted cuff should be modeled together with the patient rather than repurposing that folded mesh.
+
+**Implementation:** In WebXR, pinch and carry the stethoscope near the learner's head to place the earpieces; the model then hides to represent wearing it. The model stays hidden for the rest of the session. The learner records chestpiece placement by interacting with the cubital area. Listening checks and pressure observations use explicit confirmation buttons on the desktop guidance card and XR slate. When the manometer first becomes an active target, it and the pressure readout move beside the patient's measurement arm. Cuff movement is out of scope. Emulator/headset visual confirmation is pending.
+
+**Acceptance:** Follow the stethoscope sequence and verify it hides after earpiece placement, remains hidden through chestpiece placement, and listening checks advance through the confirmation button on desktop and XR. Confirm the sphygmomanometer and readout appear beside the patient and pressure observations advance through confirmation controls. Restart restores scene items to their initial positions. Track audio mechanics and cuff appearance separately as later work.
+
+**Visual follow-up:** The learner-facing pressure readout and moving needle are now working. The manometer's exact position still needs tuning under B6.
+
+### B6. Refine the sphygmomanometer's exact position — deferred
+
+**Observed:** The manometer is now closer to the patient's arm, but its exact placement still needs visual tuning from the learner's viewpoint.
+
+**Expected:** The manometer sits in a believable, reachable position beside the supported arm, with its face and pressure readout visible and unobstructed. Keep the current single-arm workflow; cuff visuals remain deferred.
+
+**Acceptance:** Review the gauge from the patient station and normal approach positions in desktop and immersive views. Adjust placement/orientation until the instrument and moving pressure needle are clearly visible without intersecting the patient, furniture, or guidance panel. Capture a screenshot as evidence.
+
+### B7. Model continuous pressure and Korotkoff sounds — in progress
+
+**Before this change:** Pressure changed through discrete accepted actions. Inflation added 10 mmHg per action; the deflation action only validated the 2 mmHg/s rate and did not run a pressure timeline. Systolic/diastolic confirmation actions used the configured patient values directly. There were UI success/error chimes, but no Korotkoff audio.
+
+**Implemented so far:** Added click-based +10 mmHg inflation and a learner-controlled “Iniciar deflação” choice within the 20–30 mmHg target range. Deflation now advances cuff pressure at 2 mmHg/s and updates the visible pressure readout. Systolic, diastolic, muffling, and confirmation actions capture the current gauge reading; audio and an auscultation cue are still pending. TypeScript checking and production build pass; no browser/XR walkthrough has been recorded yet.
+
+**Expected:** Use explicit click/tap buttons, not a hold gesture: each “Inflar +10 mmHg” press adds one increment, and the learner chooses when to press “Iniciar deflação” based on their palpated estimate. After controlled deflation starts, cuff pressure falls at 2 mmHg/s and continuously updates the visible needle. Beat-like Korotkoff sounds are synchronized with the patient's heart rate and current cuff pressure, and are audible only after the learner places the earpieces and chestpiece. “Registrar sistólica” and “Registrar diastólica” capture the pressure currently shown when the learner presses them; case values drive the simulated sound thresholds but are not filled into learner observations automatically. Provide an explicit “Liberar ar” control after the listening/confirmation range.
+
+**Stopping points:** Recording the first sound does not stop deflation. In the usual branch, record phase V at sound disappearance, continue listening for 20–30 mmHg below it to confirm disappearance, then release the remaining air to zero. In the persistent-sounds branch, continue to zero, record the muffling pressure and zero, then release the cuff.
+
+**Acceptance:** Verify button-controlled 10 mmHg inflation with learner-chosen stopping point, then silence above systolic, first sound at phase I, regular beats during auscultation, disappearance at phase V for ordinary cases, and the persistent-sounds branch through zero. Confirm deflation stays at 2 mmHg/s, the readout follows it, audio stops when auscultation ends or the session resets, and pressure observations come from the displayed reading. Use synthesized Web Audio transients or authored sound assets; keep them distinct from the existing UI chimes.
+
+## Suggested implementation order
+
+1. **B1 — XR dialogue selection:** resolve the emulator interaction path first because it blocks a complete communication flow and determines input conventions for immersive UI.
+2. **B2 — Patient access and occlusion:** establish clear, repeatable positions for reaching the supported measurement arm before tuning interaction feedback and object placement.
+3. **B3 — In-step progress:** make the existing multi-action progression legible on desktop and XR.
+4. **B5 — Object animation:** connect accepted semantic actions to visible object state and reset behavior; build on the now-verified access and input paths.
+
+For each actionable item, reproduce the issue, implement only that item, validate its acceptance points, and update this backlog with status and a concise evidence note before moving on. B4 is clarification-only unless future walkthroughs reveal ambiguity. Revisit dependencies if investigation shows a different order is necessary.
+
+## Relationship to the implementation plan
+
+These are follow-up usability and integration defects in already-integrated stages 3–5, plus visual mechanics overlapping stage 6. The simulator remains a single-arm workflow by project decision; bilateral assessment is out of scope. Synchronized Korotkoff audio, remaining asset work, and full hardware validation (stage 8) remain tracked in `IMPLEMENTATION_PLAN.md`.
+
+## Next work session: step-by-step plan
+
+1. **Implement the pressure timeline (B7).** Replace discrete pressure jumps during auscultation with a timed 2 mmHg/s deflation and synchronized Korotkoff events.
+2. **Connect learner observations.** Record the live gauge value at first sound and disappearance; preserve the 20–30 mmHg confirmation and zero-release steps.
+3. **Validate both sound branches.** Check ordinary phase V disappearance and persistent sounds through zero, including headset audio gating and reset.
+4. **Refine manometer placement (B6).** Tune the exact position from the learner's view and capture evidence.
+5. **Record coverage.** Note desktop browser, emulator, and headset validation separately. Cuff visuals remain deferred.
+
+**Next task:** Add Korotkoff cues driven by the pressure timeline under B7, then validate the flow in the running scene. The pressure display and button-controlled pressure timeline are implemented; exact instrument positioning remains deferred under B6. Keep the auscultatory workflow single-arm and defer cuff visuals.

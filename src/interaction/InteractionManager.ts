@@ -13,7 +13,7 @@ import type { Observer } from "@babylonjs/core/Misc/observable";
 import type { Nullable } from "@babylonjs/core/types";
 import type { App } from "../App";
 import { auscultatoryScenario } from "../simulation/auscultatoryScenario";
-import { eligibleCuffs, requiredMaterials } from "../simulation/clinicalParameters";
+import { clinicalParameters, eligibleCuffs, requiredMaterials } from "../simulation/clinicalParameters";
 import type { ActionDefinition, CommunicationRecord, InteractionEvent, MeasurementRecord, SessionState, StepDefinition } from "../simulation/types";
 
 interface TargetMeta {
@@ -38,6 +38,7 @@ const targetInfo: Record<string, TargetMeta> = {
 };
 
 export class InteractionManager {
+	private _visualMotions: Array<{ node: TransformNode | Mesh; from: Vector3; to: Vector3; startedAt: number; duration: number }> = [];
 	private _scene: Scene;
 	private _app: App;
 	private _arrowRoot: TransformNode | null = null;
@@ -45,6 +46,13 @@ export class InteractionManager {
 	private _xrSlateRoot: TransformNode | null = null;
 	private _xrSlatePlane: Mesh | null = null;
 	private _xrSlateTexture: DynamicTexture | null = null;
+	private _xrConfirmationTarget: Mesh | null = null;
+	private _xrInflateTarget: Mesh | null = null;
+	private _pressureGauge: Mesh | null = null;
+	private _pressureGaugeTexture: DynamicTexture | null = null;
+	private _lastDisplayedPressure = Number.NaN;
+	private _sphygmomanometerPositioned = false;
+	private _xrDialogueTargets: Mesh[] = [];
 	private _dialogueTriggerRoot: TransformNode | null = null;
 	private _dialogueTriggerMesh: Mesh | null = null;
 	private _guidanceCard: HTMLElement | null = null;
@@ -60,11 +68,150 @@ export class InteractionManager {
 		this._scene = scene;
 		this._app = app;
 		this._initTargetArrow();
+		this._initPressureGauge();
 		this._initXrSlate();
 		this._initDialogueTrigger();
 		this._initGuidanceHUD();
 		this._initPointerInteractions();
 		this._updateGuidance();
+	}
+
+	private _initPressureGauge(): void {
+		const sphygmo = this._scene.getTransformNodeByName("sphygmo-root");
+		if (!sphygmo) return;
+
+		const gauge = CreatePlane("pressure-readout", { width: 0.38, height: 0.26 }, this._scene);
+		gauge.position.copyFrom(sphygmo.position).addInPlace(new Vector3(0, 0.20, 0.13));
+		gauge.billboardMode = Mesh.BILLBOARDMODE_ALL;
+		gauge.isPickable = false;
+		const material = new StandardMaterial("pressure-readout-material", this._scene);
+		material.disableLighting = true;
+		material.backFaceCulling = false;
+		material.emissiveColor = Color3.White();
+		const texture = new DynamicTexture("pressure-readout-texture", { width: 512, height: 346 }, this._scene, false);
+		material.diffuseTexture = texture;
+		material.opacityTexture = texture;
+		gauge.material = material;
+		this._pressureGauge = gauge;
+		this._pressureGaugeTexture = texture;
+		this._drawPressureGauge(0);
+	}
+
+	private _drawPressureGauge(pressure: number): void {
+		const texture = this._pressureGaugeTexture;
+		if (!texture) return;
+		const ctx = texture.getContext() as unknown as CanvasRenderingContext2D;
+		const value = Math.max(0, Math.min(300, pressure));
+		ctx.clearRect(0, 0, 512, 346);
+		ctx.fillStyle = "#17252b";
+		ctx.beginPath();
+		ctx.roundRect(5, 5, 502, 336, 28);
+		ctx.fill();
+		ctx.strokeStyle = "#dce6e8";
+		ctx.lineWidth = 8;
+		ctx.stroke();
+		ctx.fillStyle = "#ffffff";
+		ctx.font = "bold 29px sans-serif";
+		ctx.textAlign = "center";
+		ctx.fillText("PRESSÃO NO MANGUITO", 256, 55);
+		const cx = 256, cy = 253, radius = 155;
+		ctx.strokeStyle = "#c8d8dc";
+		ctx.lineWidth = 5;
+		ctx.beginPath();
+		ctx.arc(cx, cy, radius, Math.PI, Math.PI * 2);
+		ctx.stroke();
+		for (let i = 0; i <= 30; i++) {
+			const angle = Math.PI + (i / 30) * Math.PI;
+			const inner = radius - (i % 5 === 0 ? 19 : 10);
+			ctx.beginPath();
+			ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
+			ctx.lineTo(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
+			ctx.stroke();
+		}
+		ctx.fillStyle = "#ffffff";
+		ctx.font = "bold 24px sans-serif";
+		ctx.fillText("0                 150                300", 256, 223);
+		const needleAngle = Math.PI + (value / 300) * Math.PI;
+		ctx.strokeStyle = "#ff5b55";
+		ctx.lineWidth = 9;
+		ctx.beginPath();
+		ctx.moveTo(cx, cy);
+		ctx.lineTo(cx + Math.cos(needleAngle) * (radius - 28), cy + Math.sin(needleAngle) * (radius - 28));
+		ctx.stroke();
+		ctx.fillStyle = "#ff5b55";
+		ctx.beginPath();
+		ctx.arc(cx, cy, 13, 0, Math.PI * 2);
+		ctx.fill();
+		ctx.fillStyle = "#ffffff";
+		ctx.font = "bold 31px sans-serif";
+		ctx.fillText(`${Math.round(value)} mmHg`, 256, 320);
+		texture.update();
+	}
+
+	public updatePressureDisplay(pressure: number): void {
+		const rounded = Math.round(pressure * 4) / 4;
+		if (Math.abs(rounded - this._lastDisplayedPressure) >= 0.25) {
+			this._lastDisplayedPressure = rounded;
+			this._drawPressureGauge(rounded);
+		}
+		const liveValue = this._guidanceCard?.querySelector("#hud-cuff-pressure-value");
+		if (liveValue) liveValue.textContent = `${Math.round(pressure)} mmHg`;
+	}
+
+	private _animatePosition(node: TransformNode | Mesh, destination: Vector3): void {
+		this._visualMotions = this._visualMotions.filter(motion => motion.node !== node);
+		this._visualMotions.push({ node, from: node.position.clone(), to: destination, startedAt: performance.now(), duration: 900 });
+	}
+
+	private _updateVisualMotions(): void {
+		const now = performance.now();
+		this._visualMotions = this._visualMotions.filter(motion => {
+			const progress = Math.min(1, (now - motion.startedAt) / motion.duration);
+			const eased = progress * progress * (3 - 2 * progress);
+			Vector3.LerpToRef(motion.from, motion.to, eased, motion.node.position);
+			return progress < 1;
+		});
+	}
+
+	private _applyAcceptedVisual(event: InteractionEvent): void {
+		const stethoscope = this._scene.getTransformNodeByName("stethoscope-root");
+		switch (event.type) {
+			case "earpieces-placed":
+				// The learner wears the earpieces; there is no learner avatar to render them on.
+				stethoscope?.setEnabled(false);
+				break;
+		}
+		const pressure = this._app.getSimulationSnapshot()?.instruments.cuffPressure ?? 0;
+		this._drawPressureGauge(pressure);
+	}
+
+	private _moveSphygmomanometerNearPatient(): void {
+		if (this._sphygmomanometerPositioned) return;
+		const snapshot = this._app.getSimulationSnapshot();
+		const sphygmomanometer = this._scene.getTransformNodeByName("sphygmo-root");
+		const arm = snapshot && this._scene.getMeshByName(`patient-forearm-${snapshot.config.arm}`);
+		if (!sphygmomanometer || !arm) return;
+
+		// Keep the gauge beside the forearm at arm height so it is reachable and
+		// readable without floating up near the patient's shoulder.
+		const destination = arm.getAbsolutePosition().addInPlace(new Vector3(0.35, 0.05, 0.10));
+		sphygmomanometer.position.copyFrom(destination);
+		const camera = this._scene.activeCamera;
+		if (camera) {
+			const facing = camera.globalPosition.subtract(destination);
+			facing.y = 0;
+			facing.normalize();
+			const yaw = Math.atan2(facing.x, facing.z);
+			sphygmomanometer.rotation.y = yaw;
+			if (this._pressureGauge) {
+				this._pressureGauge.position.copyFrom(destination)
+					.addInPlace(new Vector3(0, 0.10, 0))
+					.addInPlace(facing.scale(0.25));
+			}
+		} else if (this._pressureGauge) {
+			this._pressureGauge.position.copyFrom(destination).addInPlace(new Vector3(0, 0.10, 0.25));
+		}
+		this._sphygmomanometerPositioned = true;
 	}
 
 	private _initTargetArrow(): void {
@@ -102,6 +249,7 @@ export class InteractionManager {
 		this._renderObserver = this._scene.onBeforeRenderObservable.add(() => {
 			if (this._disposed) return;
 			time += 0.04;
+			this._updateVisualMotions();
 
 			if (this._arrowRoot) {
 				Vector3.LerpToRef(this._arrowRoot.position, this._targetLerpPosition, 0.12, this._arrowRoot.position);
@@ -118,13 +266,23 @@ export class InteractionManager {
 			}
 
 			if (this._xrSlateRoot) {
-				Vector3.LerpToRef(this._xrSlateRoot.position, new Vector3(
-					this._targetLerpPosition.x + 0.35,
-					this._targetLerpPosition.y + 0.25,
-					this._targetLerpPosition.z
-				), 0.10, this._xrSlateRoot.position);
 				const camera = this._scene.activeCamera;
 				if (camera) {
+					const forward = camera.getDirection(Vector3.Forward()).normalize();
+					const screenRight = camera.getDirection(Vector3.Right()).normalize();
+					let wallDistance = 1.15;
+					if (forward.x > 0.001) wallDistance = Math.min(wallDistance, (1.9 - camera.position.x) / forward.x);
+					else if (forward.x < -0.001) wallDistance = Math.min(wallDistance, (-1.9 - camera.position.x) / forward.x);
+					if (forward.z > 0.001) wallDistance = Math.min(wallDistance, (1.9 - camera.position.z) / forward.z);
+					else if (forward.z < -0.001) wallDistance = Math.min(wallDistance, (-1.9 - camera.position.z) / forward.z);
+
+					const depth = Math.max(0.3, Math.min(1.15, wallDistance - 0.25));
+					const slatePosition = camera.position.add(forward.scale(depth))
+						.addInPlace(screenRight.scale(0.55))
+						.addInPlace(new Vector3(0, 0.12, 0));
+					slatePosition.x = Math.max(-1.9, Math.min(1.9, slatePosition.x));
+					slatePosition.z = Math.max(-1.9, Math.min(1.9, slatePosition.z));
+					Vector3.LerpToRef(this._xrSlateRoot.position, slatePosition, 0.15, this._xrSlateRoot.position);
 					this._xrSlateRoot.lookAt(camera.position, Math.PI);
 				}
 			}
@@ -150,6 +308,60 @@ export class InteractionManager {
 		this._xrSlateRoot = slateRoot;
 		this._xrSlatePlane = plane;
 		this._xrSlateTexture = texture;
+		const confirmTarget = CreatePlane("xr-guidance-confirm-action", { width: 0.20, height: 0.065 }, this._scene);
+		confirmTarget.parent = slateRoot;
+		confirmTarget.position.set(0.11, -0.125, -0.004);
+		const confirmMaterial = new StandardMaterial("xr-guidance-confirm-action-material", this._scene);
+		confirmMaterial.diffuseColor = Color3.White();
+		confirmMaterial.emissiveColor = Color3.White();
+		confirmMaterial.alpha = 0.001;
+		confirmMaterial.disableDepthWrite = true;
+		confirmTarget.material = confirmMaterial;
+		confirmTarget.isPickable = true;
+		confirmTarget.metadata = { logicalTarget: "confirm-action" };
+		confirmTarget.setEnabled(false);
+		this._xrConfirmationTarget = confirmTarget;
+		const inflateTarget = CreatePlane("xr-guidance-inflate-action", { width: 0.20, height: 0.065 }, this._scene);
+		inflateTarget.parent = slateRoot;
+		inflateTarget.position.set(-0.11, -0.125, -0.004);
+		inflateTarget.material = confirmMaterial;
+		inflateTarget.isPickable = true;
+		inflateTarget.metadata = { logicalTarget: "inflate-action" };
+		inflateTarget.setEnabled(false);
+		this._xrInflateTarget = inflateTarget;
+		this._initXrDialogueTargets(slateRoot);
+	}
+
+	private _initXrDialogueTargets(slateRoot: TransformNode): void {
+		const topics = [
+			{ id: "identify-patient", y: 180 },
+			{ id: "check-readiness", y: 225 },
+			{ id: "explain-and-rest", y: 270 },
+			{ id: "inform-patient", y: 315 },
+		] as const;
+		const targetMaterial = new StandardMaterial("xr-dialogue-target-material", this._scene);
+		targetMaterial.diffuseColor = Color3.White();
+		targetMaterial.emissiveColor = Color3.White();
+		targetMaterial.alpha = 0.001;
+		targetMaterial.disableDepthWrite = true;
+
+		for (const topic of topics) {
+			const target = CreatePlane(`xr-dialogue-topic-${topic.id}`, { width: 0.79, height: 0.034 }, this._scene);
+			target.parent = slateRoot;
+			target.position.set(0, 0.21 - (topic.y / 512) * 0.42, -0.003);
+			target.material = targetMaterial;
+			target.isPickable = true;
+			target.metadata = { logicalTarget: "dialogue-topic", topicId: topic.id };
+			this._xrDialogueTargets.push(target);
+		}
+
+		const closeTarget = CreatePlane("xr-dialogue-close-target", { width: 0.12, height: 0.06 }, this._scene);
+		closeTarget.parent = slateRoot;
+		closeTarget.position.set(0.32, 0.152, -0.003);
+		closeTarget.material = targetMaterial;
+		closeTarget.isPickable = true;
+		closeTarget.metadata = { logicalTarget: "dialogue-close" };
+		this._xrDialogueTargets.push(closeTarget);
 	}
 
 	private _initDialogueTrigger(): void {
@@ -188,12 +400,41 @@ export class InteractionManager {
 	}
 
 	public handleMeshInteraction(mesh: Mesh): boolean {
+		const logicalTarget = mesh.metadata?.logicalTarget ?? this._resolveLogicalTarget(mesh.name);
+		if (logicalTarget === "dialogue-topic") {
+			if (!this._dialogueOpen) return false;
+			const topicId = mesh.metadata?.topicId as "identify-patient" | "check-readiness" | "explain-and-rest" | "inform-patient" | undefined;
+			if (!topicId) return false;
+			this.triggerDialogueTopic(topicId);
+			return true;
+		}
+		if (logicalTarget === "dialogue-close") {
+			if (!this._dialogueOpen) return false;
+			this.closeDialogueModal();
+			return true;
+		}
+		if (logicalTarget === "confirm-action") {
+			if (!this._getConfirmationLabel(this._app.getCurrentSimulationAction()?.type)) return false;
+			return this.executeActiveActionFromScene();
+		}
+		if (logicalTarget === "inflate-action") return this._dispatchInflationIncrement();
+
 		const snapshot = this._app.getSimulationSnapshot();
 		const currentAction = this._app.getCurrentSimulationAction();
 		if (!snapshot || !currentAction) return false;
+		if (currentAction.rule === "inflate" || currentAction.rule === "inflate-stop") {
+			this._showFeedback("Use os botões de pressão no painel para inflar ou iniciar a deflação.", false);
+			return false;
+		}
 
-		const logicalTarget = mesh.metadata?.logicalTarget ?? this._resolveLogicalTarget(mesh.name);
 		if (!logicalTarget) return false;
+		const meshArm = mesh.metadata?.arm as "esquerdo" | "direito" | undefined;
+		if (["patient-arm", "patient-wrist", "cuff"].includes(logicalTarget)
+			&& meshArm && meshArm !== snapshot.config.arm) {
+			this._showFeedback(`Use o braço ${snapshot.config.arm} durante toda esta medição.`, false);
+			this._playChime(false);
+			return false;
+		}
 
 		// Lateral dialogue trigger or direct click on the patient model
 		if (logicalTarget === "dialogue-trigger" || logicalTarget === "patient" || mesh.name === "patient-dialogue-trigger") {
@@ -206,6 +447,11 @@ export class InteractionManager {
 			const expectedName = targetInfo[currentAction.target]?.label ?? currentAction.target;
 			this._showFeedback(`Alvo incorreto: a etapa atual requer interação com: ${expectedName}. Siga a seta indicadora.`, false);
 			this._playChime(false);
+			return false;
+		}
+		if (currentAction.type === "earpieces-placed"
+			&& this._scene.activeCamera?.name.toLowerCase().includes("webxr")) {
+			this._showFeedback("Agarre o estetoscópio com pinça e solte-o no local indicado.", true);
 			return false;
 		}
 
@@ -229,7 +475,18 @@ export class InteractionManager {
 		return null;
 	}
 
-	private _resolveTargetPosition(targetKey: string): Vector3 {
+	private _resolveTargetPosition(targetKey: string, actionType?: string): Vector3 {
+		if (actionType === "cubital-artery-palpated" || actionType === "chestpiece-placed") {
+			const armSide = this._app.getSimulationSnapshot()?.config.arm ?? "direito";
+			const arm = this._scene.getMeshByName(`patient-forearm-${armSide}`);
+			const wrist = this._scene.getMeshByName(`patient-wrist-${armSide}`);
+			if (arm && wrist) {
+				// The cubital fossa sits just distal to the elbow, between the arm and wrist anchors.
+				return Vector3.Lerp(arm.getAbsolutePosition(), wrist.getAbsolutePosition(), 0.3)
+					.addInPlace(new Vector3(0, 0.025, 0));
+			}
+		}
+
 		switch (targetKey) {
 			case "hygiene-station": {
 				const sanitizer = this._scene.getTransformNodeByName("sanitizer-root");
@@ -258,19 +515,22 @@ export class InteractionManager {
 				break;
 			}
 			case "patient-arm": {
-				const arm = this._scene.getMeshByName("patient-forearm-direito");
+				const armSide = this._app.getSimulationSnapshot()?.config.arm ?? "direito";
+				const arm = this._scene.getMeshByName(`patient-forearm-${armSide}`);
 				if (arm) return arm.getAbsolutePosition().clone().addInPlace(new Vector3(0, 0.15, 0));
 				break;
 			}
 			case "cuff": {
+				const armSide = this._app.getSimulationSnapshot()?.config.arm ?? "direito";
 				const sleeve = this._scene.getMeshByName("fitted-cuff-sleeve");
 				if (sleeve) return sleeve.getAbsolutePosition().clone().addInPlace(new Vector3(0, 0.16, 0));
-				const arm = this._scene.getMeshByName("patient-forearm-direito");
+				const arm = this._scene.getMeshByName(`patient-forearm-${armSide}`);
 				if (arm) return arm.getAbsolutePosition().clone().addInPlace(new Vector3(0, 0.16, 0));
 				break;
 			}
 			case "patient-wrist": {
-				const wrist = this._scene.getMeshByName("patient-wrist-direito");
+				const armSide = this._app.getSimulationSnapshot()?.config.arm ?? "direito";
+				const wrist = this._scene.getMeshByName(`patient-wrist-${armSide}`);
 				if (wrist) return wrist.getAbsolutePosition().clone().addInPlace(new Vector3(0, 0.16, 0));
 				break;
 			}
@@ -359,10 +619,13 @@ export class InteractionManager {
 				event = { type: action.type, target: "patient-arm", value: true };
 				break;
 			case "chestpiece-placed":
-				event = { type: action.type, target: "stethoscope", value: "bell" };
+				event = { type: action.type, target: action.target, value: "bell" };
+				break;
+			case "inflation-stopped":
+				event = { type: action.type, target: "cuff", value: true };
 				break;
 			case "rapid-inflation-increment": {
-				const targetPressure = snapshot.instruments.cuffPressure + 10;
+				const targetPressure = snapshot.instruments.cuffPressure + clinicalParameters.inflation.increment;
 				event = { type: action.type, target: "cuff", value: targetPressure };
 				break;
 			}
@@ -370,18 +633,17 @@ export class InteractionManager {
 				event = { type: action.type, target: "cuff", value: 2 };
 				break;
 			case "first-sound-recorded":
-				event = { type: action.type, target: "gauge", value: config.pressure.systolic };
+				event = { type: action.type, target: "gauge", value: this._roundedReading(snapshot.instruments.cuffPressure) };
 				break;
 			case "regular-beats-confirmed":
 				event = { type: action.type, target: "stethoscope", value: true };
 				break;
 			case "sound-disappearance-recorded":
 			case "muffling-recorded":
-				event = { type: action.type, target: "gauge", value: config.pressure.diastolic };
+				event = { type: action.type, target: "gauge", value: this._roundedReading(snapshot.instruments.cuffPressure) };
 				break;
 			case "disappearance-confirmed": {
-				const confirmDrop = config.pressure.diastolic - 25;
-				event = { type: action.type, target: "stethoscope", value: confirmDrop };
+				event = { type: action.type, target: "stethoscope", value: this._roundedReading(snapshot.instruments.cuffPressure) };
 				break;
 			}
 			case "cuff-removed":
@@ -389,9 +651,14 @@ export class InteractionManager {
 				break;
 			case "three-values-recorded":
 			case "measurement-documented": {
+				const measuredSystolic = Number(snapshot.observations["identify-systolic:first-sound-recorded"] ?? config.pressure.systolic);
+				const diastolicObservation = config.persistentSounds
+					? "persistent-sounds:muffling-recorded"
+					: "identify-diastolic:sound-disappearance-recorded";
+				const measuredDiastolic = Number(snapshot.observations[diastolicObservation] ?? config.pressure.diastolic);
 				const record: MeasurementRecord = {
-					systolic: config.pressure.systolic,
-					diastolic: config.pressure.diastolic,
+					systolic: measuredSystolic,
+					diastolic: measuredDiastolic,
 					...(config.persistentSounds ? { zero: 0 } : {}),
 					dateTime: new Date().toISOString().slice(0, 16),
 					arm: config.arm,
@@ -413,11 +680,47 @@ export class InteractionManager {
 		return false;
 	}
 
+	private _roundedReading(pressure: number): number {
+		return Math.round(pressure / 2) * 2;
+	}
+
+	private _dispatchInflationIncrement(): boolean {
+		const snapshot = this._app.getSimulationSnapshot();
+		const action = this._app.getCurrentSimulationAction();
+		if (!snapshot || !action || (action.rule !== "inflate" && action.rule !== "inflate-stop")) return false;
+		const nextPressure = snapshot.instruments.cuffPressure + clinicalParameters.inflation.increment;
+		return this.dispatchAction({ type: "rapid-inflation-increment", target: "cuff", value: nextPressure });
+	}
+
+	public canGrabStethoscope(): boolean {
+		const action = this._app.getCurrentSimulationAction();
+		return action?.type === "earpieces-placed";
+	}
+
+	public handleStethoscopeRelease(position: Vector3): boolean {
+		const action = this._app.getCurrentSimulationAction();
+		if (!action || !this.canGrabStethoscope()) return false;
+
+		const camera = this._scene.activeCamera;
+		const destination = camera?.globalPosition ?? null;
+		const tolerance = 0.65;
+		if (!destination || Vector3.Distance(position, destination) > tolerance) {
+			this._showFeedback("Leve o estetoscópio até o local indicado antes de soltá-lo.", false);
+			this._playChime(false);
+			return false;
+		}
+
+		const stethoscope = this._scene.getTransformNodeByName("stethoscope-root");
+		const mesh = stethoscope?.getChildMeshes().find(child => child instanceof Mesh);
+		return this.executeActiveActionFromScene(mesh as Mesh | undefined);
+	}
+
 	public dispatchAction(event: InteractionEvent): boolean {
 		const result = this._app.dispatchSimulationEvent(event);
 		if (!result) return false;
 
 		if (result.accepted) {
+			this._applyAcceptedVisual(event);
 			this._showFeedback(result.feedback || "Ação realizada corretamente.", true);
 			this._playChime(true);
 			this._updateGuidance();
@@ -501,12 +804,56 @@ export class InteractionManager {
 		const action = this._app.getCurrentSimulationAction();
 		if (!step || !action) return;
 
-		const target = targetInfo[action.target] ?? { label: action.target, icon: "🎯", station: "overview" };
-		const targetPos = this._resolveTargetPosition(action.target);
+		if (action.target === "gauge") this._moveSphygmomanometerNearPatient();
+		const confirmationLabel = this._getConfirmationLabel(action.type);
+		const isInflationStep = action.rule === "inflate" || action.rule === "inflate-stop";
+		const target = { ...(targetInfo[action.target] ?? { label: action.target, icon: "🎯", station: "overview" as const }) };
+		if (isInflationStep) {
+			target.label = "Controles de pressão";
+			target.icon = "🎛️";
+		}
+		if (action.target === "patient-arm" || action.target === "patient-wrist" || action.target === "cuff") {
+			target.station = snapshot.config.arm;
+		}
+		if (action.target === "gauge" && this._sphygmomanometerPositioned) {
+			target.station = snapshot.config.arm;
+		}
+		if (confirmationLabel && ["regular-beats-confirmed", "disappearance-confirmed", "sounds-at-zero-confirmed"].includes(action.type)) {
+			target.label = "Ausculta";
+			target.icon = "👂";
+			target.station = snapshot.config.arm;
+		}
+		const targetPos = this._resolveTargetPosition(
+			confirmationLabel && target.label === "Ausculta" ? "patient-arm" : action.target,
+			action.type
+		);
 		this._targetLerpPosition.copyFrom(targetPos);
+		this._arrowRoot?.setEnabled(!isInflationStep);
 
-		const stepNumber = step.checklistNumber;
-		const progressPercent = Math.min(100, Math.round((stepNumber / 26) * 100));
+		const progressPercent = this._getProgressPercent(snapshot);
+		this._xrConfirmationTarget?.setEnabled(Boolean(confirmationLabel));
+		const confirmationHtml = confirmationLabel ? `
+			<div class="step-actions-row">
+				<button id="hud-confirm-action" class="step-action-button" type="button">✓ ${confirmationLabel}</button>
+			</div>
+		` : "";
+		const pressureNow = snapshot.instruments.cuffPressure;
+		const estimate = Number(snapshot.observations["estimate-systolic:pulse-reappearance-recorded"] ?? 0);
+		const minimumStopPressure = estimate + clinicalParameters.inflation.minAboveEstimate;
+		const canInflate = isInflationStep && pressureNow + clinicalParameters.inflation.increment
+			<= estimate + clinicalParameters.inflation.maxAboveEstimate;
+		const stopGuidanceHtml = isInflationStep && action.rule === "inflate" ? `
+			<p class="step-detail step-pressure-guidance">Iniciar deflação fica disponível a partir de ${minimumStopPressure} mmHg (estimativa + ${clinicalParameters.inflation.minAboveEstimate} mmHg).</p>
+		` : "";
+		const inflationHtml = canInflate ? `
+			<div class="step-actions-row">
+				<button id="hud-inflate-button" class="step-action-button" type="button">＋ Inflar +10 mmHg</button>
+			</div>
+		` : "";
+		const pressureSteps = ["inflate-for-auscultation", "start-deflation", "identify-systolic", "identify-diastolic", "confirm-disappearance", "persistent-sounds"];
+		const pressureHtml = pressureSteps.includes(step.id) ? `
+			<p class="step-detail">Pressão no manguito: <strong id="hud-cuff-pressure-value">${Math.round(pressureNow)} mmHg</strong></p>
+		` : "";
 
 		let timerHtml = "";
 		if (action.rule === "estimation-wait") {
@@ -521,13 +868,17 @@ export class InteractionManager {
 
 		this._guidanceCard.innerHTML = `
 			<div class="guidance-header">
-				<span class="step-counter-badge">Passo ${stepNumber} de 26</span>
+				<span class="step-counter-badge">Progresso geral: ${progressPercent}%</span>
 				<span class="step-target-badge">${target.icon} ${target.label}</span>
 			</div>
 			<h3 class="step-headline">${step.prompt}</h3>
 			<p class="step-detail">${action.prompt}</p>
 
+			${pressureHtml}
+			${inflationHtml}
+			${stopGuidanceHtml}
 			${timerHtml}
+			${confirmationHtml}
 
 			<div class="step-actions-row">
 				<button id="hud-open-dialogue-btn" class="button secondary" type="button" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
@@ -559,6 +910,10 @@ export class InteractionManager {
 			this._app.advanceSimulatedTime(60000);
 			this.dispatchAction({ type: "estimation-wait-finished", target: "cuff", value: true });
 		});
+		const confirmBtn = this._guidanceCard.querySelector("#hud-confirm-action") as HTMLButtonElement | null;
+		confirmBtn?.addEventListener("click", () => this.executeActiveActionFromScene());
+		const inflateBtn = this._guidanceCard.querySelector("#hud-inflate-button") as HTMLButtonElement | null;
+		inflateBtn?.addEventListener("click", () => this._dispatchInflationIncrement());
 
 		const gotoBtn = this._guidanceCard.querySelector("#hud-goto-station-button") as HTMLButtonElement | null;
 		gotoBtn?.addEventListener("click", () => {
@@ -566,11 +921,37 @@ export class InteractionManager {
 		});
 
 		// Update in-headset 3D slate
-		this._renderXrSlate(stepNumber, step.prompt, action.prompt, target.label, target.station);
+		this._renderXrSlate(progressPercent, step.prompt, action.prompt, target.label, target.station, confirmationLabel, canInflate);
+	}
+
+	private _getConfirmationLabel(actionType?: string): string | null {
+		switch (actionType) {
+			case "inflation-stopped": return "Iniciar deflação";
+			case "deflation-started": return "Iniciar deflação";
+			case "estimation-air-released": return "Liberar todo o ar";
+			case "remaining-air-released": return "Liberar o ar restante";
+			case "regular-beats-confirmed": return "Confirmar batidas regulares";
+			case "disappearance-confirmed": return "Confirmar desaparecimento dos sons";
+			case "sounds-at-zero-confirmed": return "Confirmar sons até zero";
+			case "pulse-reappearance-recorded": return "Registrar estimativa sistólica";
+			case "first-sound-recorded": return "Registrar primeiro som";
+			case "sound-disappearance-recorded": return "Registrar pressão diastólica";
+			case "muffling-recorded": return "Registrar pressão de abafamento";
+			default: return null;
+		}
+	}
+
+	private _getProgressPercent(snapshot: SessionState): number {
+		const completedCount = Object.values(snapshot.steps).filter(step =>
+			step.status === "completed" || step.status === "skipped"
+		).length;
+		return Math.round((completedCount / auscultatoryScenario.length) * 100);
 	}
 
 	private _renderDialogueHUD(snapshot: SessionState): void {
 		if (!this._guidanceCard) return;
+		this._xrConfirmationTarget?.setEnabled(false);
+		const progressPercent = this._getProgressPercent(snapshot);
 
 		const isStepDone = (id: string) => snapshot.steps[id]?.status === "completed";
 		const done5 = isStepDone("identify-patient");
@@ -580,7 +961,7 @@ export class InteractionManager {
 
 		this._guidanceCard.innerHTML = `
 			<div class="guidance-header">
-				<span class="step-counter-badge" style="background: #0288d1;">Comunicação Clínica</span>
+				<span class="step-counter-badge" style="background: #0288d1;">Progresso geral: ${progressPercent}%</span>
 				<span class="step-target-badge">💬 Paciente</span>
 			</div>
 			<div class="dialogue-header-row">
@@ -592,7 +973,7 @@ export class InteractionManager {
 			<div class="dialogue-topics-list">
 				<button class="dialogue-topic-button ${done5 ? 'completed' : ''}" data-topic="identify-patient">
 					<div class="topic-header">
-						<span class="topic-title">👤 1. Identificação do Paciente (Passo 5)</span>
+						<span class="topic-title">👤 Identificação do Paciente</span>
 						<span class="topic-status-badge ${done5 ? 'badge-done' : 'badge-pending'}">${done5 ? '✓ Realizado' : 'Pendente'}</span>
 					</div>
 					<p class="topic-description">Apresentar-se e confirmar nome completo e data de nascimento no leito.</p>
@@ -600,7 +981,7 @@ export class InteractionManager {
 
 				<button class="dialogue-topic-button ${done6 ? 'completed' : ''}" data-topic="check-readiness">
 					<div class="topic-header">
-						<span class="topic-title">📋 2. Condições de Preparo (Passo 6)</span>
+						<span class="topic-title">📋 Condições de Preparo</span>
 						<span class="topic-status-badge ${done6 ? 'badge-done' : 'badge-pending'}">${done6 ? '✓ Realizado' : 'Pendente'}</span>
 					</div>
 					<p class="topic-description">Verificar bexiga vazia, repouso de 90 min de exercícios e 30 min sem café/fumo.</p>
@@ -608,7 +989,7 @@ export class InteractionManager {
 
 				<button class="dialogue-topic-button ${done7 ? 'completed' : ''}" data-topic="explain-and-rest">
 					<div class="topic-header">
-						<span class="topic-title">⏳ 3. Orientações e Repouso (Passo 7)</span>
+						<span class="topic-title">⏳ Orientações e Repouso</span>
 						<span class="topic-status-badge ${done7 ? 'badge-done' : 'badge-pending'}">${done7 ? '✓ Realizado' : 'Pendente'}</span>
 					</div>
 					<p class="topic-description">Explicar o exame, instruir silêncio e realizar repouso calmo de 5 minutos.</p>
@@ -616,11 +997,16 @@ export class InteractionManager {
 
 				<button class="dialogue-topic-button ${done23 ? 'completed' : ''}" data-topic="inform-patient">
 					<div class="topic-header">
-						<span class="topic-title">📢 4. Comunicação de Resultados (Passo 23)</span>
+						<span class="topic-title">📢 Comunicação de Resultados</span>
 						<span class="topic-status-badge ${done23 ? 'badge-done' : 'badge-pending'}">${done23 ? '✓ Realizado' : 'Pendente'}</span>
 					</div>
 					<p class="topic-description">Informar os valores de pressão arterial aferidos e condutas ao paciente.</p>
 				</button>
+			</div>
+			<div class="step-progress-container">
+				<div class="step-progress-track">
+					<div class="step-progress-fill" style="width: ${progressPercent}%;"></div>
+				</div>
 			</div>
 
 			${this._lastDialogueText ? `
@@ -655,11 +1041,12 @@ export class InteractionManager {
 		});
 
 		// Render XR slate dialogue mode
-		this._renderXrSlateDialogue(done5, done6, done7, done23);
+		this._renderXrSlateDialogue(done5, done6, done7, done23, progressPercent);
 	}
 
 	private _renderCompletionHUD(): void {
 		if (!this._guidanceCard) return;
+		this._xrConfirmationTarget?.setEnabled(false);
 
 		const records = this._app.getCommunicationEvaluation();
 		const findRecord = (id: string) => records.find(r => r.stepId === id);
@@ -772,9 +1159,9 @@ export class InteractionManager {
 		);
 	}
 
-	private _renderXrSlate(stepNumber: number, title: string, instruction: string, targetName: string, station: string): void {
+	private _renderXrSlate(progressPercent: number, title: string, instruction: string, targetName: string, station: string, confirmationLabel: string | null, canInflate = false): void {
 		if (!this._xrSlateTexture) return;
-		const ctx = this._xrSlateTexture.getContext();
+		const ctx = this._xrSlateTexture.getContext() as unknown as CanvasRenderingContext2D;
 		const w = 1024;
 		const h = 512;
 
@@ -790,7 +1177,7 @@ export class InteractionManager {
 
 		ctx.fillStyle = "#00E5FF";
 		ctx.font = "bold 32px 'Segoe UI', Arial, sans-serif";
-		ctx.fillText(`PASSO ${stepNumber} DE 26 • ESTAÇÃO: ${station.toUpperCase()}`, 40, 70);
+		ctx.fillText(`PROGRESSO GERAL: ${progressPercent}% • ESTAÇÃO: ${station.toUpperCase()}`, 40, 70);
 
 		ctx.fillStyle = "#81C784";
 		ctx.font = "bold 28px 'Segoe UI', Arial, sans-serif";
@@ -804,16 +1191,43 @@ export class InteractionManager {
 		ctx.font = "30px 'Segoe UI', Arial, sans-serif";
 		this._drawWrappedText(ctx, instruction, 40, 310, 940, 40);
 
-		ctx.fillStyle = "#FFD54F";
-		ctx.font = "italic 26px 'Segoe UI', Arial, sans-serif";
-		ctx.fillText("Interaja com o objeto 3D • Use o ícone de diálogo para falar com o paciente", 40, 465);
+		if (canInflate) {
+			ctx.fillStyle = "#08765A";
+			ctx.beginPath();
+			ctx.roundRect(confirmationLabel ? 270 : 300, 390, confirmationLabel ? 220 : 424, 62, 14);
+			ctx.fill();
+			ctx.fillStyle = "#FFFFFF";
+			ctx.font = "bold 26px 'Segoe UI', Arial, sans-serif";
+			ctx.textAlign = "center";
+			ctx.fillText("＋ Inflar +10 mmHg", confirmationLabel ? 380 : 512, 430);
+			ctx.textAlign = "left";
+		}
+		if (confirmationLabel) {
+			ctx.fillStyle = "#08765A";
+			ctx.beginPath();
+			ctx.roundRect(canInflate ? 520 : 300, 390, canInflate ? 250 : 424, 62, 14);
+			ctx.fill();
+			ctx.fillStyle = "#FFFFFF";
+			ctx.font = "bold 24px 'Segoe UI', Arial, sans-serif";
+			ctx.textAlign = "center";
+			ctx.fillText(`✓ ${confirmationLabel}`, canInflate ? 645 : 512, 430);
+			ctx.textAlign = "left";
+		} else if (!canInflate) {
+			ctx.fillStyle = "#FFD54F";
+			ctx.font = "italic 26px 'Segoe UI', Arial, sans-serif";
+			ctx.fillText("Interaja com o objeto 3D • Use o ícone de diálogo para falar com o paciente", 40, 465);
+		}
 
 		this._xrSlateTexture.update();
+		this._xrConfirmationTarget?.setEnabled(Boolean(confirmationLabel));
+		this._xrInflateTarget?.setEnabled(canInflate);
+		if (this._xrConfirmationTarget) this._xrConfirmationTarget.position.x = canInflate && confirmationLabel ? 0.20 : 0;
+		if (this._xrInflateTarget) this._xrInflateTarget.position.x = canInflate && confirmationLabel ? -0.20 : 0;
 	}
 
-	private _renderXrSlateDialogue(d5: boolean, d6: boolean, d7: boolean, d23: boolean): void {
+	private _renderXrSlateDialogue(d5: boolean, d6: boolean, d7: boolean, d23: boolean, progressPercent: number): void {
 		if (!this._xrSlateTexture) return;
-		const ctx = this._xrSlateTexture.getContext();
+		const ctx = this._xrSlateTexture.getContext() as unknown as CanvasRenderingContext2D;
 		const w = 1024;
 		const h = 512;
 
@@ -833,20 +1247,30 @@ export class InteractionManager {
 
 		ctx.fillStyle = "#FFFFFF";
 		ctx.font = "bold 26px 'Segoe UI', Arial, sans-serif";
-		ctx.fillText("Tópicos de Diálogo (Ações Não-Bloqueantes):", 40, 130);
+		ctx.fillText("Toque ou aponte e selecione um tópico:", 40, 130);
 
 		ctx.font = "24px 'Segoe UI', Arial, sans-serif";
+		ctx.fillStyle = "rgba(0, 229, 255, 0.12)";
+		for (const y of [154, 199, 244, 289]) {
+			ctx.beginPath();
+			ctx.roundRect(28, y, 968, 38, 8);
+			ctx.fill();
+		}
 		ctx.fillStyle = d5 ? "#81C784" : "#E0E0E0";
-		ctx.fillText(`1. Identificação (Passo 5): ${d5 ? '✓ Concluído' : 'Pendente'}`, 40, 180);
+		ctx.fillText(`Identificação: ${d5 ? '✓ Concluído' : 'Pendente'}`, 40, 180);
 
 		ctx.fillStyle = d6 ? "#81C784" : "#E0E0E0";
-		ctx.fillText(`2. Condições de Preparo (Passo 6): ${d6 ? '✓ Concluído' : 'Pendente'}`, 40, 225);
+		ctx.fillText(`Condições de Preparo: ${d6 ? '✓ Concluído' : 'Pendente'}`, 40, 225);
 
 		ctx.fillStyle = d7 ? "#81C784" : "#E0E0E0";
-		ctx.fillText(`3. Orientações e Repouso 5 min (Passo 7): ${d7 ? '✓ Concluído' : 'Pendente'}`, 40, 270);
+		ctx.fillText(`Orientações e Repouso 5 min: ${d7 ? '✓ Concluído' : 'Pendente'}`, 40, 270);
 
 		ctx.fillStyle = d23 ? "#81C784" : "#E0E0E0";
-		ctx.fillText(`4. Informar Valores (Passo 23): ${d23 ? '✓ Concluído' : 'Pendente'}`, 40, 315);
+		ctx.fillText(`Informar Valores: ${d23 ? '✓ Concluído' : 'Pendente'}`, 40, 315);
+
+		ctx.fillStyle = "#80DEEA";
+		ctx.font = "20px 'Segoe UI', Arial, sans-serif";
+		ctx.fillText("Fechar diálogo", 820, 70);
 
 		if (this._lastDialogueText) {
 			ctx.fillStyle = "#FFD54F";
@@ -856,14 +1280,18 @@ export class InteractionManager {
 
 		ctx.fillStyle = "#81D4FA";
 		ctx.font = "22px 'Segoe UI', Arial, sans-serif";
-		ctx.fillText("Clique no ícone lateral ou no painel para selecionar os tópicos", 40, 480);
+		ctx.fillText(`PROGRESSO GERAL: ${progressPercent}%`, 40, 475);
+		ctx.fillStyle = "rgba(255, 255, 255, 0.22)";
+		ctx.fillRect(340, 457, 640, 18);
+		ctx.fillStyle = "#00E5FF";
+		ctx.fillRect(340, 457, 640 * (progressPercent / 100), 18);
 
 		this._xrSlateTexture.update();
 	}
 
 	private _renderXrSlateDebrief(score: number, p5: string, p6: string, p7: string, p23: string): void {
 		if (!this._xrSlateTexture) return;
-		const ctx = this._xrSlateTexture.getContext();
+		const ctx = this._xrSlateTexture.getContext() as unknown as CanvasRenderingContext2D;
 		const w = 1024;
 		const h = 512;
 
@@ -977,6 +1405,7 @@ export class InteractionManager {
 
 	public dispose(): void {
 		this._disposed = true;
+		this._visualMotions = [];
 		if (this._pointerObserver) {
 			this._scene.onPointerObservable.remove(this._pointerObserver);
 			this._pointerObserver = null;
@@ -999,8 +1428,18 @@ export class InteractionManager {
 		this._dialogueTriggerRoot = null;
 		this._xrSlatePlane?.dispose();
 		this._xrSlatePlane = null;
+		this._xrConfirmationTarget?.dispose();
+		this._xrConfirmationTarget = null;
+		this._xrInflateTarget?.dispose();
+		this._xrInflateTarget = null;
+		this._xrDialogueTargets.forEach(target => target.dispose());
+		this._xrDialogueTargets = [];
 		this._xrSlateTexture?.dispose();
 		this._xrSlateTexture = null;
+		this._pressureGauge?.dispose();
+		this._pressureGauge = null;
+		this._pressureGaugeTexture?.dispose();
+		this._pressureGaugeTexture = null;
 		this._xrSlateRoot?.dispose();
 		this._xrSlateRoot = null;
 		this._audioCtx?.close().catch(() => {});

@@ -1,6 +1,6 @@
 # Scenario engine (implementation plan, step 1)
 
-This framework-free TypeScript module represents all 26 checklist entries from `references/checklist_v2.pdf`, revision 04/03/2026) for a single-arm measurement. It does not yet orchestrate the new bilateral first-assessment requirement. It does not yet connect to the scene or change the existing XR prototype.
+This framework-free TypeScript module represents all 26 checklist entries from `references/checklist_v2.pdf`, revision 04/03/2026, for a single-arm measurement. Project scope is one measured arm per session; the PDF's bilateral first-assessment note is retained as source context and is not part of the workflow. The engine does not itself connect to the scene or change the XR prototype.
 
 ## Run
 
@@ -16,7 +16,7 @@ Both commands use the installed TypeScript compiler and Node's built-in faciliti
 | Source | Responsibility |
 | --- | --- |
 | `clinicalParameters.ts` | PDF-derived timings, thresholds, materials, cuff table and source references. |
-| `patientCases.ts` | Fictional patient identities, arm circumferences, pressures, measured arms and sound-persistence flags. Also supplies `defaultConfig` (Ana). |
+| `patientCases.ts` | Fictional patient identities, arm circumferences, pressures, the currently supported measured arm and sound-persistence flags. Also supplies `defaultConfig` (Ana). |
 | `auscultatoryScenario.ts` | Ordered actions, Portuguese prompts, targets and typed validation conditions. |
 | `mockRunner.ts` | Sample submitted values, simulated elapsed time, fixed documentation timestamp and fictional professional identity. |
 | `SimulationController.ts` | Checks submissions against the selected case, clinical requirements and session state. |
@@ -25,11 +25,13 @@ The cases are engineering fixtures that exercise different inputs; they are not 
 
 | Case ID | Fictional patient | Arm circumference | Pressure (mmHg) | Arm | Purpose |
 | --- | --- | --- | --- | --- | --- |
-| `ana-standard` | Ana Exemplo | 30 cm | 118/66 | Left | Adult cuff, ordinary path |
+| `ana-standard` | Ana Exemplo | 30 cm | 118/66 | Right | Adult cuff, ordinary path |
 | `bruno-large-cuff` | Bruno Exemplo | 40 cm | 158/94 | Right | Large adult cuff, higher pressure values |
-| `clara-small-cuff` | Clara Exemplo | 24 cm | 96/58 | Left | Small adult cuff, lower pressure values |
+| `clara-small-cuff` | Clara Exemplo | 24 cm | 96/58 | Right | Small adult cuff, lower pressure values |
 | `diego-persistent` | Diego Exemplo | 33 cm | 126/72/0 | Right | Persistent sounds; 72 is the muffling observation |
-| `elisa-infant-cuff` | Elisa Exemplo | 21 cm | 110/70 | Left | Infant cuff only; former small-adult overlap removed in 2026 |
+| `elisa-infant-cuff` | Elisa Exemplo | 21 cm | 110/70 | Right | Infant cuff only; former small-adult overlap removed in 2026 |
+
+The current room scene poses only the right arm at heart level, so all available single-arm fixtures use that same arm. Left-arm and bilateral cases need matching scene poses before they can be offered.
 
 Select a case explicitly, or supply a complete custom `ScenarioConfig`:
 
@@ -107,6 +109,6 @@ Tests cover both complete paths, all checklist entries, prerequisites and orderi
 
 Readiness now requires 90 minutes without exercise/walking/physiotherapy; the intake/smoking interval remains 30 minutes. The post-estimation wait is one minute, bringing the ordinary mock's simulated waiting time to 360,000 ms (five-minute rest plus one-minute post-estimation wait). This is not the total real procedure duration. All seven updated cuff ranges and bladder dimensions are in `clinicalParameters.ts`, including Coxa (45–52 cm). Elisa's renamed `elisa-infant-cuff` case verifies the removed 21 cm overlap.
 
-`supportingContent.firstAssessment` and `clinicalParameters.betweenMeasurements` preserve the new requirement to measure both arms at the first assessment, wait at least one minute between measurements, compare results, and retain the higher-pressure reference arm. **The current controller still represents one arm only.** Bilateral orchestration, per-arm fixtures/records, interval enforcement across measurements, and reference-arm selection are pending tasks in implementation-plan stages 1 and 5–7. Existing menu cases and mocks must not be treated as complete first assessments. Tie/discordant-arm comparison policy is not supplied by the PDF and must be resolved before automatic scoring.
+`supportingContent.firstAssessment` preserves the PDF's note about measuring both arms at first assessment as source learning content. It does not define a second pass in the simulator. The project workflow remains one measured arm per session; no bilateral orchestration, second-pass timing, or reference-arm selection is planned.
 
 `supportingContent.officeClassification` stores a literal transcription of Table 2 for office measurements from age 18. The stage-3 diastolic cell prints `110` without a comparison sign (verified visually in the PDF). No classifier or classification scoring has been added; the adjacent clarification note must accompany any future display until the source is clarified.
