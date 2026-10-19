@@ -102,6 +102,9 @@ export class App {
 	private _handleResize = (): void => { this._engine?.resize(); };
 
 	public constructor() {
+		// The start menu owns the loading feedback; Babylon's global overlay can
+		// remain visible while a scene waits for every resource to become ready.
+		SceneLoaderFlags.ShowLoadingScreen = false;
 		const canvasElement = document.getElementById("canvas") as HTMLCanvasElement;
 		if (!canvasElement) {
 			throw new Error("Canvas element not found");
@@ -127,6 +130,19 @@ export class App {
 
 	public getCurrentSimulationAction() {
 		return this._simulation?.getCurrentAction() ?? null;
+	}
+
+	public isPressureDeflationActive(): boolean {
+		return this._simulation?.isDeflationActive() ?? false;
+	}
+
+	public isPressureDeflationPaused(): boolean {
+		return this._simulation?.isDeflationPaused() ?? false;
+	}
+
+	public togglePressureDeflation(): void {
+		this._simulation?.toggleDeflationPause(this.getSimulatedTime());
+		this._interactionManager?.refreshGuidance();
 	}
 
 	public advanceSimulatedTime(ms: number): void {
@@ -181,6 +197,9 @@ export class App {
 			}
 			this._scene = new Scene(this._engine);
 			await this._handleLoad(config);
+			// Clear a loading UI that may have been opened before the flag took effect
+			// (for example during hot reload), before the session canvas is revealed.
+			this._engine.hideLoadingUI();
 			if (this._disposed) throw new Error("A aplicação foi encerrada.");
 			this._simulation = simulation;
 			this._interactionManager = new InteractionManager(this._scene, this);
@@ -200,6 +219,7 @@ export class App {
 			this._clearSession();
 			throw error;
 		} finally {
+			this._engine?.hideLoadingUI();
 			this._loading = false;
 		}
 	}
