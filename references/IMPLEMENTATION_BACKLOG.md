@@ -4,15 +4,15 @@ This backlog captures issues reported during a walkthrough of the current single
 
 ## Reported issues
 
-### B1. Make patient dialogue selectable in immersive WebXR — investigate first
+### B1. Improve patient dialogue panel visibility — in progress
 
-**Observed:** In the Immersive Web Emulator, pinching the blue dialogue sphere opens the patient-interaction slate, but the learner cannot choose a topic. Desktop/browser interaction works. The screenshot `Screenshot from 2026-10-16 14-13-34.png` (in `/tmp` at report time) shows the slate and emulated hands, but does not capture a selection attempt.
+**Observed:** In the first physical-headset lab test, the learner could interact with the dialogue panel. The panel could be larger to make it easier to read from farther away. Earlier emulator reports described difficulty selecting topics; the latest lab result confirms that panel interaction works on the tested headset.
 
-**Expected:** The learner can open the dialogue and select each topic in the immersive emulator and on supported headsets. Determine whether selection is intended through hand ray/pinch, controller ray/select, or a supported DOM overlay; make the supported input clear in the interface. Do not assume a physical headset is required: the implementation plan explicitly includes emulator validation.
+**Expected:** Enlarge the dialogue panel so its topics and controls are easy to see and use from farther away, while keeping the panel positioned comfortably in view. Preserve the working interaction behavior.
 
-**Acceptance:** Select all available dialogue topics using the documented emulator input; verify the patient response and completion state update. Record emulator/browser and headset coverage separately.
+**Acceptance:** On the physical headset, read and select all available dialogue topics from the normal learner positions; verify patient responses and completion updates. Confirm the larger panel remains comfortably placed and does not obstruct the patient or task targets. Record headset/browser coverage separately.
 
-**Implementation:** Added pickable XR targets aligned with all four topic rows and a close target. Selection uses the scene's existing pointer-pick path and dispatches through the existing lateral dialogue flow. The slate labels the rows as selectable. Emulator and physical-headset runtime validation remains pending.
+**Implementation:** Added pickable XR targets aligned with all four topic rows and a close target. Selection uses the scene's existing pointer-pick path and dispatches through the existing lateral dialogue flow. The first physical-headset lab test confirmed panel interaction; panel size/readability improvement and validation remain pending.
 
 ### B2. Reach and interact with the supported measurement arm
 
@@ -76,9 +76,41 @@ This backlog captures issues reported during a walkthrough of the current single
 
 **Acceptance:** Verify button-controlled 10 mmHg inflation with learner-chosen stopping point, then silence above systolic, first sound at phase I, regular beats during auscultation, disappearance at phase V for ordinary cases, and the persistent-sounds branch through zero. Confirm deflation stays at 2 mmHg/s, the readout follows it, audio stops when auscultation ends or the session resets, and pressure observations come from the displayed reading. Use synthesized Web Audio transients or authored sound assets; keep them distinct from the existing UI chimes.
 
+### B8. Enlarge the dialogue close button
+
+**Observed:** The first physical-headset lab test found that the close button on the patient dialogue panel is difficult to target from farther away.
+
+**Expected:** Make the close control large and easy to acquire at the normal dialogue viewing distance, while keeping its purpose visually clear and avoiding accidental activation of nearby choices.
+
+**Acceptance:** Open and close the dialogue panel from the usual learner positions on the physical headset; confirm the target is comfortably selectable from farther away and does not overlap other controls.
+
+### B9. Revisit hand interaction gestures
+
+**Observed:** Pinching was difficult during the first physical-headset lab test.
+
+**Expected:** Evaluate gesture choices per action. Consider grabbing for picking up/carrying objects and pointing or ray selection for UI and confirmation controls. Keep each interaction discoverable and consistent with its purpose; retain pinch only where it remains the clearest, reliable choice.
+
+**Acceptance:** Try the candidate gestures on the physical headset for dialogue, panel controls, and object manipulation. Select and document the supported gesture for each action, including any accessibility or tracking limitations, then verify acquisition, release, and accidental activation behavior.
+
+### B10. Review placement of scene equipment and panels
+
+**Observed:** The first physical-headset lab test identified a need to review the positioning of scene elements, including the sphygmomanometer and pressure panel.
+
+**Expected:** Place equipment and panels where they are visible, reachable, and unobstructed from the learner's normal approach and working position around the patient. Include the sphygmomanometer, pressure panel, and other frequently used controls in the review.
+
+**Acceptance:** Walk through the complete measurement flow on the physical headset and adjust placements that are hard to see, reach, or operate. Check for occlusion, awkward reach, and collisions with the patient or furniture. Record headset and viewpoint evidence. B6's sphygmomanometer-specific positioning criteria remain applicable.
+
+### B11. Add pressure measurement sounds
+
+**Observed:** The first physical-headset lab test prompted a check for audible feedback during pressure measurement. The current pressure work item B7 specifies synchronized Korotkoff sounds, which are still pending.
+
+**Expected:** Implement and verify the pressure-measurement audio described in B7, including Korotkoff beats synchronized with pressure and gated on correct stethoscope placement. Keep these clinical measurement sounds distinct from interface chimes.
+
+**Acceptance:** Validate audible onset and disappearance at the configured pressure thresholds, synchronization during deflation, audibility through the headset, and stopping on auscultation end or session reset. Update B7 with evidence when complete.
+
 ## Suggested implementation order
 
-1. **B1 — XR dialogue selection:** resolve the emulator interaction path first because it blocks a complete communication flow and determines input conventions for immersive UI.
+1. **B1 — Dialogue panel visibility:** enlarge and validate the panel based on the first physical-headset test.
 2. **B2 — Patient access and occlusion:** establish clear, repeatable positions for reaching the supported measurement arm before tuning interaction feedback and object placement.
 3. **B3 — In-step progress:** make the existing multi-action progression legible on desktop and XR.
 4. **B5 — Object animation:** connect accepted semantic actions to visible object state and reset behavior; build on the now-verified access and input paths.
