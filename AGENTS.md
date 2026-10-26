@@ -4,6 +4,18 @@
 
 Build a Portuguese-language **“Simulador de medição de pressão arterial”**, initially covering the auscultatory method. Implement a guided simulation based on the supplied PDF checklist. Follow [the implementation plan](references/IMPLEMENTATION_PLAN.md) for the workflow and visual references: `Start_menu.png` for menu organization, `example_hands_and_step.png` for visible hands and next-step arrows, and `example_room.png` for the clinical environment. The patient is pre-seated on the examination chair with arm at heart level, and the cuff is pre-fitted. Conversational and anamnese tasks are non-blocking, accessible via a lateral interaction trigger with timing evaluated for debriefing feedback. Adapt the menu to this scenario and project identity. Documentation may remain in English; user-facing instructions and feedback must be in Portuguese.
 
+## Implementation Backlog
+
+Track reported usability and interaction follow-ups in [the implementation backlog](references/IMPLEMENTATION_BACKLOG.md). It covers:
+
+- **B1–B4:** dialogue panel visibility, supported-arm reach, repeated-step progress, and non-blocking patient communication.
+- **B5–B7 and B11:** visible instrument interactions, manometer placement, pressure/Korotkoff mechanics, and measurement sounds.
+- **B8–B10 and B14:** dialogue close-button targeting, hand gestures, and equipment/panel placement.
+- **B12–B13:** replacement patient model and expanded clinical room.
+- **B15:** meaningful, resettable object interactions.
+
+Before implementing a backlog item, read its observed issue, expected behavior, acceptance criteria, dependencies, and current status in the backlog. Work one actionable item at a time, follow its suggested order where dependencies allow, and update its status and evidence after implementation and validation. B4 is clarification-only unless later walkthroughs reveal ambiguity. Preserve the backlog's single-arm workflow and keep cuff visuals deferred unless the scope is explicitly changed there. The backlog also records the group's work divisions and next-session plan; coordinate shared scene and interaction changes as described there.
+
 ## Project Structure & Module Organization
 
 This project uses TypeScript, Vite, Babylon.js, and Havok for an interactive WebXR scene.
