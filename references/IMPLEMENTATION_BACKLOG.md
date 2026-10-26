@@ -108,25 +108,69 @@ This backlog captures issues reported during a walkthrough of the current single
 
 **Acceptance:** Validate audible onset and disappearance at the configured pressure thresholds, synchronization during deflation, audibility through the headset, and stopping on auscultation end or session reset. Update B7 with evidence when complete.
 
+### B12. Replace the patient character model
+
+**Observed:** The current mannequin is a provisional patient character; the team wants a different character model.
+
+**Expected:** Select and integrate a replacement that fits the clinical scenario, available licensing/source constraints, and the existing seated pose. Preserve the single-arm workflow: the measured right arm, cuff, and target zones must align with the replacement model. Keep the current character available until the replacement is integrated and reviewed.
+
+**Acceptance:** Confirm the replacement loads in desktop and XR, sits naturally in the chair, presents the supported arm at heart level, and keeps the cuff and interaction zones aligned. Record source/license and capture a learner-view screenshot. Recheck B2 reach and collision behavior.
+
+### B13. Expand the clinical room
+
+**Observed:** The current room footprint constrains movement and the arrangement of the clinical stations; the team wants a larger room.
+
+**Expected:** Increase usable floor space while preserving a coherent clinical environment, clear paths between stations, and the room's visual style. Revisit wall/floor geometry, collision boundaries, lighting, and station/teleport viewpoints together.
+
+**Acceptance:** Confirm the expanded room has no gaps or unintended collision barriers, supports clear circulation between hygiene, record, instrument, and patient stations, and works with desktop movement and XR teleportation. Capture an overview screenshot and update the station coordinates.
+
+### B14. Reposition scene items
+
+**Observed:** Equipment and panels need a broader placement pass. This extends B6 (manometer position) and B10 (equipment and panels) to cover the room layout and learner approach positions.
+
+**Expected:** Arrange frequently used items and panels so they are visible, reachable, and unobstructed from the relevant work positions, without intersecting the patient, furniture, or each other. Use the expanded room and final character pose as layout constraints.
+
+**Acceptance:** Review the complete flow from normal approach and patient-station viewpoints in desktop and XR. Check reach, visibility, occlusion, collision, and guidance-panel placement; capture representative screenshots. Update B6/B10 evidence rather than treating their existing criteria as superseded.
+
+### B15. Add meaningful object interactions
+
+**Observed:** The existing flow has limited object manipulation and visual response. This extends B5's implemented stethoscope feedback and stationary cuff scope into a defined interaction pass for clinical objects.
+
+**Expected:** Identify which instruments and supplies the learner should pick up, move, use, or return, and connect each accepted action to a visible, resettable object state and the existing simulation event. Use gestures appropriate to each action as assessed in B9. Keep cuff appearance/movement explicitly deferred unless the team adds it to scope.
+
+**Acceptance:** For each selected object, verify acquisition, movement/use, release, correct simulation progression, rejected/duplicate actions, and restoration on restart in desktop and XR. Document the interaction and gesture per object; no object should advance a step solely because it was generically touched.
+
 ## Suggested implementation order
 
-1. **B1 — Dialogue panel visibility:** enlarge and validate the panel based on the first physical-headset test.
-2. **B2 — Patient access and occlusion:** establish clear, repeatable positions for reaching the supported measurement arm before tuning interaction feedback and object placement.
-3. **B3 — In-step progress:** make the existing multi-action progression legible on desktop and XR.
-4. **B5 — Object animation:** connect accepted semantic actions to visible object state and reset behavior; build on the now-verified access and input paths.
+1. **B7/B11 — Korotkoff audio:** implement cues against the existing pressure timeline, then verify both sound branches.
+2. **B12/B13 — Character and room:** choose the replacement model and expand the room; coordinate pose and footprint before final layout work.
+3. **B2/B6/B10/B14 — Access and placement:** recheck arm reach, manometer, equipment, and panels after the room and character changes.
+4. **B5/B9/B15 — Object interactions:** define per-object actions and gestures, then connect them to visible state and reset behavior.
+5. **B1/B8 — Dialogue controls:** improve panel readability and close-button targeting.
+6. **B3 — In-step progress:** make multi-action progress legible on desktop and XR.
 
 For each actionable item, reproduce the issue, implement only that item, validate its acceptance points, and update this backlog with status and a concise evidence note before moving on. B4 is clarification-only unless future walkthroughs reveal ambiguity. Revisit dependencies if investigation shows a different order is necessary.
 
 ## Relationship to the implementation plan
 
-These are follow-up usability and integration defects in already-integrated stages 3–5, plus visual mechanics overlapping stage 6. The simulator remains a single-arm workflow by project decision; bilateral assessment is out of scope. Synchronized Korotkoff audio, remaining asset work, and full hardware validation (stage 8) remain tracked in `IMPLEMENTATION_PLAN.md`.
+These are follow-up usability and integration defects in already-integrated stages 3–5, plus visual mechanics overlapping stage 6. B12–B15 add character, room, layout, and object-interaction work. The simulator remains a single-arm workflow by project decision; bilateral assessment is out of scope. Synchronized Korotkoff audio, remaining asset work, and full hardware validation (stage 8) remain tracked in `IMPLEMENTATION_PLAN.md`.
+
+## Four parallel work divisions
+
+The group chose these divisions to balance workload: Division 1 has a smaller initial scope, with the expectation that its owner will pick up an additional pending task or help another division after finishing. Each owner should report assumptions and evidence and coordinate shared scene or interaction changes before editing them.
+
+1. **Division 1 — Two experience flows:** define and implement the tutorial and no-tutorial flows, including what guidance changes between them. The group mentioned an additional feature, but its scope is still to be decided. The initial assignment is intentionally lighter; when it is complete, its owner can take one of the pending tasks below or help another division. Candidate follow-up tasks are patient dialogue (B1/B8, plus conversational content in the scenario) and patient model selection/integration (B12), depending on priority and coordination needs.
+2. **Division 2 — Room, layout, and object interaction (B2/B5/B6/B9/B10/B13/B14/B15):** expand and dimension the room, place scene items and panels, improve visibility, reach, and access, and add meaningful object interactions. Coordinate the final layout with whoever takes B12 and defines the patient pose. Final equipment placement depends on the room footprint and patient pose.
+3. **Division 3.1 — Auscultation and Korotkoff audio (B7/B11):** complete the auscultation training flow and integrate synthesized Korotkoff sounds across phases I–V, including a decision on sound variation/randomization that preserves the clinical pressure relationship. Coordinate audio events with the pressure timeline and accepted learner observations.
+4. **Division 3.2 — Training feedback (B3/B4):** complete the feedback flow, including clear progress through multi-action steps and preservation of non-blocking communication timing and debrief evaluation. Coordinate feedback wording and behavior with the two experience modes in Division 1.
+
+Patient dialogue and patient models remain pending tasks rather than prerequisites for starting all divisions. Division 1 can absorb either as follow-up work if available, or assist another division; the group can reassign them based on progress. Room expansion can begin in parallel with model selection, while final B14 placement follows the room and patient-pose decisions. Keep cuff visuals deferred unless the group changes that scope.
 
 ## Next work session: step-by-step plan
 
-1. **Implement the pressure timeline (B7).** Replace discrete pressure jumps during auscultation with a timed 2 mmHg/s deflation and synchronized Korotkoff events.
-2. **Connect learner observations.** Record the live gauge value at first sound and disappearance; preserve the 20–30 mmHg confirmation and zero-release steps.
-3. **Validate both sound branches.** Check ordinary phase V disappearance and persistent sounds through zero, including headset audio gating and reset.
-4. **Refine manometer placement (B6).** Tune the exact position from the learner's view and capture evidence.
-5. **Record coverage.** Note desktop browser, emulator, and headset validation separately. Cuff visuals remain deferred.
+1. **Start the four group divisions:** define tutorial/no-tutorial behavior, agree on the expanded room footprint, progress auscultation/audio work, and scope the feedback flow.
+2. **Use Division 1's follow-up capacity** for patient dialogue, patient model work, an agreed additional feature, or support for another division.
+3. **After room and patient-pose decisions,** finalize equipment/panel positions and verify object interactions in desktop and XR.
+4. **Validate Korotkoff branches** and record desktop, emulator, and physical-headset coverage separately. Cuff visuals remain deferred.
 
-**Next task:** Add Korotkoff cues driven by the pressure timeline under B7, then validate the flow in the running scene. The pressure display and button-controlled pressure timeline are implemented; exact instrument positioning remains deferred under B6. Keep the auscultatory workflow single-arm and defer cuff visuals.
+**Next task:** Begin work across the four group divisions. The first division has intentionally lighter initial scope; once its tutorial/no-tutorial flows are complete, assign its owner a pending dialogue/model task or have them support another division. Keep the auscultatory workflow single-arm and cuff visuals deferred.
