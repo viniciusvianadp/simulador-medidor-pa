@@ -329,7 +329,14 @@ export class SimulationController {
 			case "cuff": return typeof value === "string" && eligibleCuffs(config.patient.armCircumferenceCm).includes(value);
 			case "offset": return numeric && value >= parameters.cuffOffset.minCm && value <= parameters.cuffOffset.maxCm;
 			case "pulse-disappearance": return numeric && value >= config.pressure.systolic;
-			case "systolic": return numeric && Math.abs(value - config.pressure.systolic) <= 2;
+			case "systolic": {
+				// Keep the learner's displayed pressure reading, but allow two seconds
+				// to react to the first audible beat while deflation continues at 2 mmHg/s.
+				const responseWindow = action.type === "first-sound-recorded"
+					? parameters.deflation.mmHgPerSecond * 2
+					: 2;
+				return numeric && Math.abs(value - config.pressure.systolic) <= responseWindow;
+			}
 			case "diastolic": return numeric && Math.abs(value - config.pressure.diastolic) <= 2;
 			case "release-start-timer": return value === 0;
 			case "estimation-wait": return value === true && elapsed >= parameters.estimationWait.minMs;

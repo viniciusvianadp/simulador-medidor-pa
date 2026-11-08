@@ -41,6 +41,10 @@ const targetInfo: Record<string, TargetMeta> = {
 const pressureInteractionSteps = [
 	"inflate-for-auscultation", "start-deflation", "identify-systolic", "identify-diastolic", "confirm-disappearance", "persistent-sounds",
 ];
+const auscultationListeningSteps = new Set([
+	"start-deflation", "identify-systolic", "identify-diastolic", "confirm-disappearance", "persistent-sounds",
+]);
+type KorotkoffPhase = "I" | "II" | "III" | "IV";
 
 export class InteractionManager {
 	private _visualMotions: Array<{ node: TransformNode | Mesh; from: Vector3; to: Vector3; startedAt: number; duration: number }> = [];
@@ -74,6 +78,8 @@ export class InteractionManager {
 	private _lastDialogueText: string | null = null;
 	private _disposed = false;
 	private _audioCtx: AudioContext | null = null;
+	private _nextKorotkoffBeatAt = 0;
+	private _korotkoffListening = false;
 	private _pointerObserver: Nullable<Observer<PointerInfo>> = null;
 	private _renderObserver: Nullable<Observer<Scene>> = null;
 	private _feedbackTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -91,6 +97,7 @@ export class InteractionManager {
 	}
 
 	public updatePressureDisplay(pressure: number): void {
+		this._updateKorotkoffAudio(pressure);
 		const rounded = Math.round(pressure * 4) / 4;
 		if (!Number.isFinite(this._xrPressureBoardLastPressure) || Math.abs(rounded - this._xrPressureBoardLastPressure) >= 0.25) {
 			this._xrPressureBoardLastPressure = rounded;
@@ -98,6 +105,78 @@ export class InteractionManager {
 		}
 		const liveValue = this._guidanceCard?.querySelector("#hud-cuff-pressure-value");
 		if (liveValue) liveValue.textContent = `${Math.round(pressure)} mmHg`;
+	}
+
+	private _updateKorotkoffAudio(pressure: number): void {
+		const snapshot = this._app.getSimulationSnapshot();
+		const placedEarpieces = Boolean(snapshot?.observations["place-earpieces:earpieces-placed"]);
+		const placedChestpiece = Boolean(snapshot?.observations["place-bell:chestpiece-placed"]);
+		const listening = Boolean(snapshot && placedEarpieces && placedChestpiece
+			&& auscultationListeningSteps.has(snapshot.currentStepId ?? "")
+			&& pressure <= snapshot.config.pressure.systolic
+			&& (snapshot.config.persistentSounds ? pressure > 0 : pressure > snapshot.config.pressure.diastolic));
+
+		if (!listening) {
+			this._korotkoffListening = false;
+			this._nextKorotkoffBeatAt = 0;
+			return;
+		}
+		if (!this._audioCtx || this._audioCtx.state !== "running") return;
+
+		const now = this._audioCtx.currentTime;
+		if (!this._korotkoffListening) {
+			this._korotkoffListening = true;
+			this._nextKorotkoffBeatAt = now + 0.08;
+		}
+		if (now < this._nextKorotkoffBeatAt) return;
+
+		const { systolic, diastolic } = snapshot!.config.pressure;
+		const persistent = snapshot!.config.persistentSounds;
+		const phaseFourStart = diastolic + 5;
+		let phase: KorotkoffPhase;
+		if (pressure > systolic - 8) phase = "I";
+		else if (pressure > systolic - (systolic - diastolic) * 0.35) phase = "II";
+		else if (pressure > phaseFourStart) phase = "III";
+		else phase = "IV";
+		this._playKorotkoffBeat(phase);
+		this._nextKorotkoffBeatAt = now + 60 / 72;
+	}
+
+	private _playKorotkoffBeat(phase: KorotkoffPhase): void {
+		const ctx = this._audioCtx;
+		if (!ctx || ctx.state !== "running") return;
+		const settings = {
+			"I": { cutoff: 1800, level: 0.24, duration: 0.11, q: 1.5 },
+			"II": { cutoff: 520, level: 0.16, duration: 0.25, q: 0.55 },
+			"III": { cutoff: 1250, level: 0.34, duration: 0.16, q: 1.25 },
+			"IV": { cutoff: 300, level: 0.09, duration: 0.23, q: 0.7 },
+		}[phase];
+		const start = ctx.currentTime;
+		const duration = settings.duration;
+		const frameCount = Math.ceil(ctx.sampleRate * duration);
+		const buffer = ctx.createBuffer(1, frameCount, ctx.sampleRate);
+		const data = buffer.getChannelData(0);
+		for (let i = 0; i < frameCount; i++) {
+			const elapsed = i / ctx.sampleRate;
+			const envelope = phase === "II"
+				? Math.min(1, elapsed / 0.025) * Math.exp(-elapsed / 0.12)
+				: Math.exp(-elapsed / (phase === "IV" ? 0.065 : 0.032));
+			data[i] = (Math.random() * 2 - 1) * envelope;
+		}
+		const source = ctx.createBufferSource();
+		const filter = ctx.createBiquadFilter();
+		const gain = ctx.createGain();
+		source.buffer = buffer;
+		filter.type = "bandpass";
+		filter.frequency.setValueAtTime(settings.cutoff, start);
+		filter.Q.setValueAtTime(settings.q, start);
+		gain.gain.setValueAtTime(settings.level, start);
+		gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+		source.connect(filter);
+		filter.connect(gain);
+		gain.connect(ctx.destination);
+		source.start(start);
+		source.stop(start + duration);
 	}
 
 	private _animatePosition(node: TransformNode | Mesh, destination: Vector3): void {
@@ -826,7 +905,10 @@ export class InteractionManager {
 			this._updateGuidance();
 			return true;
 		} else {
-			this._showFeedback(result.feedback || "Ação não aceita.", false);
+			const feedback = event.type === "first-sound-recorded"
+				? `Leitura de ${event.value ?? "—"} mmHg não aceita. Pause ao ouvir a primeira batida; se ela já passou, reinicie a sessão para tentar novamente.`
+				: result.feedback || "Ação não aceita.";
+			this._showFeedback(feedback, false);
 			this._playChime(false);
 			return false;
 		}
@@ -937,13 +1019,21 @@ export class InteractionManager {
 				<button id="hud-confirm-action" class="step-action-button" type="button">✓ ${confirmationLabel}</button>
 			</div>
 		` : "";
+		const firstSoundHint = action.type === "first-sound-recorded"
+			? `<p class="step-detail">Ao ouvir a primeira batida, pause a deflação para manter a leitura e então registre a pressão exibida.</p>`
+			: "";
 		const pressureNow = snapshot.instruments.cuffPressure;
 		const estimate = Number(snapshot.observations["estimate-systolic:pulse-reappearance-recorded"] ?? 0);
 		const minimumStopPressure = estimate + clinicalParameters.inflation.minAboveEstimate;
 		const canInflate = isInflationStep && pressureNow + clinicalParameters.inflation.increment
 			<= estimate + clinicalParameters.inflation.maxAboveEstimate;
-		const stopGuidanceHtml = isInflationStep && action.rule === "inflate" ? `
-			<p class="step-detail step-pressure-guidance">Iniciar deflação fica disponível a partir de ${minimumStopPressure} mmHg (estimativa + ${clinicalParameters.inflation.minAboveEstimate} mmHg).</p>
+		const inflationGuidanceHtml = isInflationStep ? `
+			<p class="step-detail step-pressure-guidance">
+				Estimativa registrada: ${estimate} mmHg. Faixa-alvo: ${minimumStopPressure}–${estimate + clinicalParameters.inflation.maxAboveEstimate} mmHg.
+				${action.rule === "inflate-stop"
+					? "A leitura atual está dentro da faixa; inicie a deflação. O próximo incremento de 10 mmHg ultrapassaria o limite."
+					: "Infle em incrementos de 10 mmHg e inicie a deflação ao atingir a faixa."
+			}</p>
 		` : "";
 		const inflationHtml = canInflate ? `
 			<div class="step-actions-row">
@@ -1005,9 +1095,10 @@ export class InteractionManager {
 			<p class="step-detail">${action.prompt}</p>
 
 			${pressureHtml}
+			${firstSoundHint}
 			${inflationHtml}
 			${deflationControlHtml}
-			${stopGuidanceHtml}
+			${inflationGuidanceHtml}
 			${timerHtml}
 			${confirmationHtml}
 

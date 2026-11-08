@@ -237,7 +237,7 @@ The procedure separates into a sequential physical pipeline, pre-established env
 
 Implement steps 14–22 with interactive visual and auditory auscultatory mechanics:
 - [ ] **Aneroid Gauge Needle Animation:** Animate the dial needle on the sphygmomanometer gauge face proportional to current cuff pressure (0–300 mmHg) during rapid inflation (+10 mmHg increments) and controlled deflation (2 mmHg/s).
-- [ ] **Korotkoff Sounds Synthesizer (Web Audio API):**
+- [x] **Korotkoff Sounds Synthesizer (Web Audio API):**
   - Synthesize rhythmic acoustic Korotkoff pulses synchronized with patient heart rate (~72 bpm, ~833 ms interval) and current cuff pressure:
     - Phase I (Systolic): Clear, repetitive tapping sounds appearing at systolic pressure.
     - Phase II/III: Murmurs / swishing softening and intensifying.
@@ -248,6 +248,8 @@ Implement steps 14–22 with interactive visual and auditory auscultatory mechan
 - [ ] **Interaction and movement feedback:** Make item movement follow accepted learner actions, beginning with stethoscope pickup and placement. Cuff visual changes are deferred.
 
 **Acceptance:** gauge needle and synthesized Korotkoff sounds remain synchronized with scenario pressure values and deflation rate.
+
+**Audio implementation (2026-11-08):** `InteractionManager` synthesizes band-passed Korotkoff transients from the live pressure reading, with case-configured systolic/diastolic thresholds, an approximately 72 bpm beat interval, silence above systolic and after phase V, and muffled beats to zero for persistent-sounds cases. Phase I uses a clear tap, phase II a softer/longer swish, phase III a louder/sharper beat, and phase IV a muffled beat. Randomize each beat's noise waveform while keeping timing, phase thresholds, and transitions deterministic. Playback requires accepted earpiece and chestpiece placement and an active auscultation step. Session disposal closes the audio context. Browser playback and first-sound registration have been confirmed by the user; phase II/III comparison, full threshold walk-throughs, and headset validation remain pending.
 
 ### 7. Implement Completion and Formative Debrief ✓
 
