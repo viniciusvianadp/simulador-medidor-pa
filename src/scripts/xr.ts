@@ -116,11 +116,9 @@ export default class XR {
 
             console.log("Hand tracking enabled:", handTracking);
 
-            // The clinical room uses hands for presence; instrument interactions
-            // arrive in stage 4. Retain pinch behavior in the original box scene.
-            if (!box) return;
-
-            const originalParent = box.parent;
+            // Box interaction is optional; hand tracking also drives clinical
+            // instrument interactions in scenes that do not contain the prototype box.
+            const originalParent = box?.parent ?? null;
 
             // Only one hand can hold the box at a time.
             let grabbingHand: string | null = null;
@@ -194,7 +192,9 @@ export default class XR {
                             const bounds = stethoscope.getHierarchyBoundingVectors(true);
                             const stethoscopeCenter = bounds.min.add(bounds.max).scale(0.5);
                             const radius = bounds.max.subtract(bounds.min).length() * 0.5;
-                            if (Vector3.Distance(pinchPosition, stethoscopeCenter) <= Math.max(radius, 0.12) + 0.12) {
+                            // Give the learner a forgiving pickup zone around the
+                            // small, thin stethoscope model.
+                            if (Vector3.Distance(pinchPosition, stethoscopeCenter) <= Math.max(radius, 0.12) + 0.35) {
                                 grabbedStethoscope = stethoscope;
                                 stethoscopeOriginalParent = stethoscope.parent as TransformNode | null;
                                 stethoscopeOriginalPosition = stethoscope.getAbsolutePosition().clone();
@@ -203,7 +203,7 @@ export default class XR {
                             }
                         }
 
-                        if (!grabbedStethoscope) {
+                        if (!grabbedStethoscope && box) {
                             const boxPosition = box.getAbsolutePosition();
 
                             const boxRadius = box.getBoundingInfo().boundingSphere.radiusWorld;

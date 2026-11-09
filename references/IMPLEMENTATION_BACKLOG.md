@@ -86,13 +86,15 @@ This backlog captures issues reported during a walkthrough of the current single
 
 **Acceptance:** Open and close the dialogue panel from the usual learner positions on the physical headset; confirm the target is comfortably selectable from farther away and does not overlap other controls.
 
-### B9. Revisit hand interaction gestures
+### B9. Revisit hand interaction gestures — in progress
 
 **Observed:** Pinching was difficult during the first physical-headset lab test.
 
 **Expected:** Evaluate gesture choices per action. Consider grabbing for picking up/carrying objects and pointing or ray selection for UI and confirmation controls. Keep each interaction discoverable and consistent with its purpose; retain pinch only where it remains the clearest, reliable choice.
 
 **Acceptance:** Try the candidate gestures on the physical headset for dialogue, panel controls, and object manipulation. Select and document the supported gesture for each action, including any accessibility or tracking limitations, then verify acquisition, release, and accidental activation behavior.
+
+**Implementation (2026-11-09):** Fixed a hand-tracking early return that disabled all clinical hand interactions when the prototype `box` mesh was absent. Stethoscope pinch acquisition now has a more forgiving proximity zone around its small model. Physical-headset retest is pending; use the lab walkthrough to assess whether acquisition/release is reliable and whether other controls need a gesture change.
 
 ### B10. Review placement of scene equipment and panels
 
