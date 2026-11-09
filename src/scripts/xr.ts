@@ -131,12 +131,15 @@ export default class XR {
                 console.log("Hand added:", handedness);
 
                 let wasPinching = false;
+                let wasFistGrabbing = false;
                 let grabbedStethoscope: TransformNode | null = null;
                 let stethoscopeOriginalParent: TransformNode | null = null;
                 let stethoscopeOriginalPosition: Vector3 | null = null;
 
-                const PINCH_START_DISTANCE = 0.025;
-                const PINCH_END_DISTANCE = 0.04;
+                // WebXR hand joints jitter at headset scale. Accept a relaxed
+                // pinch and keep a wider release threshold to avoid flicker.
+                const PINCH_START_DISTANCE = 0.045;
+                const PINCH_END_DISTANCE = 0.065;
 
                 this.scene.onBeforeRenderObservable.add(() => {
                     const thumbTip =
@@ -159,6 +162,62 @@ export default class XR {
                         thumbPosition,
                         indexPosition
                     );
+
+                    const wrist = hand.getJointMesh(WebXRHandJoint.WRIST);
+                    const fingerJoints = [
+                        [WebXRHandJoint.INDEX_FINGER_TIP, WebXRHandJoint.INDEX_FINGER_PHALANX_PROXIMAL],
+                        [WebXRHandJoint.MIDDLE_FINGER_TIP, WebXRHandJoint.MIDDLE_FINGER_PHALANX_PROXIMAL],
+                        [WebXRHandJoint.RING_FINGER_TIP, WebXRHandJoint.RING_FINGER_PHALANX_PROXIMAL],
+                        [WebXRHandJoint.PINKY_FINGER_TIP, WebXRHandJoint.PINKY_FINGER_PHALANX_PROXIMAL],
+                    ] as const;
+                    let trackedFingers = 0;
+                    let curledFingers = 0;
+                    for (const [tipJoint, proximalJoint] of fingerJoints) {
+                        const tip = hand.getJointMesh(tipJoint);
+                        const proximal = hand.getJointMesh(proximalJoint);
+                        if (!tip || !proximal) continue;
+                        trackedFingers++;
+                        if (Vector3.Distance(tip.getAbsolutePosition(), proximal.getAbsolutePosition()) < 0.075) {
+                            curledFingers++;
+                        }
+                    }
+                    const fistGrab = trackedFingers >= 3 && curledFingers >= 3;
+                    const fistRelease = trackedFingers >= 3 && curledFingers < 2;
+
+                    // A closed hand picks up the stethoscope; opening it releases.
+                    // This whole-hand gesture is easier to form than a fingertip pinch.
+                    if (!wasFistGrabbing && fistGrab) {
+                        wasFistGrabbing = true;
+                        const stethoscope = this.scene.getTransformNodeByName("stethoscope-root");
+                        if (stethoscope && wrist && stethoscopeHand === null && grabbingHand === null && this._canGrabStethoscope?.()) {
+                            stethoscope.computeWorldMatrix(true);
+                            const bounds = stethoscope.getHierarchyBoundingVectors(true);
+                            const center = bounds.min.add(bounds.max).scale(0.5);
+                            const radius = bounds.max.subtract(bounds.min).length() * 0.5;
+                            if (Vector3.Distance(wrist.getAbsolutePosition(), center) <= Math.max(radius, 0.12) + 0.45) {
+                                grabbedStethoscope = stethoscope;
+                                stethoscopeOriginalParent = stethoscope.parent as TransformNode | null;
+                                stethoscopeOriginalPosition = stethoscope.getAbsolutePosition().clone();
+                                stethoscopeHand = handedness;
+                                stethoscope.setParent(wrist, true);
+                            }
+                        }
+                    } else if (wasFistGrabbing && fistRelease) {
+                        wasFistGrabbing = false;
+                        if (stethoscopeHand === handedness && grabbedStethoscope && wrist) {
+                            const releasePosition = wrist.getAbsolutePosition().clone();
+                            grabbedStethoscope.setParent(stethoscopeOriginalParent, true);
+                            grabbedStethoscope.setAbsolutePosition(releasePosition);
+                            const accepted = this._onStethoscopeRelease?.(releasePosition) ?? false;
+                            if (!accepted && stethoscopeOriginalPosition) {
+                                grabbedStethoscope.setAbsolutePosition(stethoscopeOriginalPosition);
+                            }
+                            grabbedStethoscope = null;
+                            stethoscopeOriginalParent = null;
+                            stethoscopeOriginalPosition = null;
+                            stethoscopeHand = null;
+                        }
+                    }
 
                     /*
                      * PINCH START
@@ -184,26 +243,7 @@ export default class XR {
                             .add(indexPosition)
                             .scale(0.5);
 
-                        // Allow the learner to physically carry the stethoscope
-                        // only during a step that asks them to place it.
-                        const stethoscope = this.scene.getTransformNodeByName("stethoscope-root");
-                        if (stethoscope && stethoscopeHand === null && this._canGrabStethoscope?.()) {
-                            stethoscope.computeWorldMatrix(true);
-                            const bounds = stethoscope.getHierarchyBoundingVectors(true);
-                            const stethoscopeCenter = bounds.min.add(bounds.max).scale(0.5);
-                            const radius = bounds.max.subtract(bounds.min).length() * 0.5;
-                            // Give the learner a forgiving pickup zone around the
-                            // small, thin stethoscope model.
-                            if (Vector3.Distance(pinchPosition, stethoscopeCenter) <= Math.max(radius, 0.12) + 0.35) {
-                                grabbedStethoscope = stethoscope;
-                                stethoscopeOriginalParent = stethoscope.parent as TransformNode | null;
-                                stethoscopeOriginalPosition = stethoscope.getAbsolutePosition().clone();
-                                stethoscopeHand = handedness;
-                                stethoscope.setParent(indexTip, true);
-                            }
-                        }
-
-                        if (!grabbedStethoscope && box) {
+                        if (box) {
                             const boxPosition = box.getAbsolutePosition();
 
                             const boxRadius = box.getBoundingInfo().boundingSphere.radiusWorld;
@@ -291,21 +331,6 @@ export default class XR {
                             );
                         }
 
-                        if (stethoscopeHand === handedness && grabbedStethoscope) {
-                            const releasePosition = thumbPosition
-                                .add(indexPosition)
-                                .scale(0.5);
-                            grabbedStethoscope.setParent(stethoscopeOriginalParent, true);
-                            grabbedStethoscope.setAbsolutePosition(releasePosition);
-                            const accepted = this._onStethoscopeRelease?.(releasePosition) ?? false;
-                            if (!accepted && stethoscopeOriginalPosition) {
-                                grabbedStethoscope.setAbsolutePosition(stethoscopeOriginalPosition);
-                            }
-                            grabbedStethoscope = null;
-                            stethoscopeOriginalParent = null;
-                            stethoscopeOriginalPosition = null;
-                            stethoscopeHand = null;
-                        }
                     }
                 });
             });

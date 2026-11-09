@@ -630,7 +630,7 @@ export class InteractionManager {
 		}
 		if (currentAction.type === "earpieces-placed"
 			&& this._scene.activeCamera?.name.toLowerCase().includes("webxr")) {
-			this._showFeedback("Agarre o estetoscópio com pinça e solte-o no local indicado.", true);
+			this._showFeedback("Feche a mão perto do estetoscópio para pegá-lo. Leve-o até a cabeça e abra a mão para colocá-lo.", true);
 			return false;
 		}
 
