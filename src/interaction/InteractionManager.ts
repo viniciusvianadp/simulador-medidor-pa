@@ -1,3 +1,4 @@
+import { HandInstruments, type InstrumentHandFrame } from "./HandInstruments";
 import { connectCuffInstrument } from "../scene/connectCuffInstrument";
 import { Scene } from "@babylonjs/core/scene";
 import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
@@ -80,6 +81,7 @@ export class InteractionManager {
 	private _instrumentFeedback: { mesh: Mesh; rest: Vector3; rotation: Quaternion; startedAt: number } | null = null;
 	private _measurementStand: TransformNode | null = null;
 	private _cuffHoses: TransformNode | null = null;
+	private _handInstruments: HandInstruments | null = null;
 	private _xrDialogueTargets: Mesh[] = [];
 	private _dialogueTriggerRoot: TransformNode | null = null;
 	private _dialogueTriggerMesh: Mesh | null = null;
@@ -201,11 +203,34 @@ export class InteractionManager {
 		this._measurementStand = stand;
 		this._sphygmomanometerPositioned = true;
 		this._instrumentControls = splitSphygmomanometer(sphygmomanometer);
+		const bulb = this._instrumentControls.find(mesh => mesh.name === "instrument-bulb");
+		const valve = this._instrumentControls.find(mesh => mesh.name === "instrument-valve");
+		if (bulb && valve) this._handInstruments = new HandInstruments(
+			bulb, valve, () => this._useInstrumentControl("instrument-bulb"),
+			() => this._useInstrumentControl("instrument-valve"),
+			() => Boolean(this._app.getSimulationSnapshot() && !this._app.getSimulationSnapshot()?.completed && this._app.getCurrentSimulationAction()?.type !== "earpieces-placed"),
+			() => this._finishInstrumentFeedback(),
+		);
 		const cuff = this._scene.getMeshByName("fitted-cuff-sleeve");
 		if (cuff instanceof Mesh) {
 			cuff.setEnabled(true);
 			this._cuffHoses = connectCuffInstrument(cuff, sphygmomanometer);
 		}
+	}
+
+	public handleInstrumentHandFrame(frame: InstrumentHandFrame): boolean {
+		return this._handInstruments?.update(frame) ?? false;
+	}
+
+	public handleInstrumentHandLost(handId: string): void {
+		this._handInstruments?.handLost(handId);
+	}
+
+	private _finishInstrumentFeedback(): void {
+		if (!this._instrumentFeedback) return;
+		this._instrumentFeedback.mesh.scaling.copyFrom(this._instrumentFeedback.rest);
+		this._instrumentFeedback.mesh.rotationQuaternion = this._instrumentFeedback.rotation.clone();
+		this._instrumentFeedback = null;
 	}
 
 	private _useInstrumentControl(target: string): boolean {
@@ -298,7 +323,7 @@ export class InteractionManager {
 			}
 
 			if (this._dialogueTriggerRoot) {
-				this._dialogueTriggerRoot.position.y = 1.352 + Math.sin(time * 0.7) * 0.025;
+				this._dialogueTriggerRoot.position.y = clinicalLayout.dialogueTrigger[1] + Math.sin(time * 0.7) * 0.025;
 				const camera = this._scene.activeCamera;
 				if (camera) {
 					this._dialogueTriggerRoot.lookAt(camera.position, Math.PI);
@@ -605,6 +630,10 @@ export class InteractionManager {
 			// Accept a narrow margin on the real parts, without visible proxy controls.
 			const point = pointerInfo.pickInfo?.pickedPoint;
 			const logicalTarget = mesh.metadata?.logicalTarget ?? this._resolveLogicalTarget(mesh.name);
+			// A closed pumping hand can also emit XR pinch-ray picks. The held
+			// assembly uses grip cycles/free-hand contact, avoiding duplicate actions.
+			if (this._handInstruments?.isHolding && ["instrument-bulb", "instrument-valve"].includes(logicalTarget)) return;
+			if (this._handInstruments && performance.now() - this._handInstruments.lastValveTouch < 300 && logicalTarget === "instrument-valve") return;
 			// A rapid second press is a double tap rather than POINTERPICK.
 			// Count it for pressure controls only; confirmations keep single-click semantics.
 			if (doubleTap && !["instrument-bulb", "instrument-valve", "inflate-action", "gauge", "instrument-work-surface", "restart-session"].includes(logicalTarget)) return;
@@ -617,6 +646,7 @@ export class InteractionManager {
 				}).filter(candidate => candidate.distance <= 0.012)
 					.sort((a, b) => a.centerDistance - b.centerDistance)[0];
 				if (nearby) {
+					if (this._handInstruments?.isHolding || (this._handInstruments && performance.now() - this._handInstruments.lastValveTouch < 300)) return;
 					this.handleMeshInteraction(nearby.part);
 					return;
 				}
@@ -669,8 +699,8 @@ export class InteractionManager {
 			return false;
 		}
 
-		// Lateral dialogue trigger or direct click on the patient model
-		if (logicalTarget === "dialogue-trigger" || logicalTarget === "patient" || mesh.name === "patient-dialogue-trigger") {
+		// Keep communication on its explicit overhead trigger, away from instrument work.
+		if (logicalTarget === "dialogue-trigger" || mesh.name === "patient-dialogue-trigger") {
 			this.openDialogueModal();
 			return true;
 		}
@@ -941,12 +971,8 @@ export class InteractionManager {
 	}
 
 	public handleHandGrabInteraction(position: Vector3): boolean {
-		// One action per open-to-closed transition; controls require a close reach.
-		const control = this._instrumentControls
-			.filter(mesh => mesh.isEnabled())
-			.map(mesh => ({ mesh, distance: Vector3.Distance(position, mesh.getBoundingInfo().boundingBox.centerWorld) }))
-			.sort((a, b) => a.distance - b.distance)[0];
-		if (control && control.distance <= 0.075) return this.handleMeshInteraction(control.mesh);
+		// Bulb/valve use the dedicated held-grip/contact path; this fallback
+		// remains for the other clinical targets and the stethoscope workflow.
 		const action = this._app.getCurrentSimulationAction();
 		if (!action || action.type === "earpieces-placed"
 			|| action.rule === "inflate" || action.rule === "inflate-stop" || action.rule === "deflation") return false;
@@ -1149,7 +1175,7 @@ export class InteractionManager {
 		this._xrPressureBoardActive = pressureBoardActive;
 		this._xrPressureBoardRoot?.setEnabled(pressureBoardActive);
 		this._xrPressureBoardInstruction = pressureBoardActive
-			? `${action.prompt} Pera: inflar. Válvula: desinflar/pausar.`
+			? (isInflationStep ? "Segure a pera; afrouxe e aperte para inflar." : "Toque a válvula com o indicador da mão livre.")
 			: "Acompanhe a leitura do manguito durante a medição.";
 		if (pressureBoardActive) {
 			this._positionXrPressureBoard();
@@ -1193,7 +1219,7 @@ export class InteractionManager {
 			<p class="step-detail">${detail}</p>
 
 			${pressureHtml}
-			${this._sphygmomanometerPositioned && (pressureInteractionSteps.includes(step.id) || step.id === "estimate-systolic") ? `<p class="step-detail">Clique na pera de borracha para inflar (+10 mmHg), ou feche e abra a mão sobre ela. Clique na pequena válvula entre a pera e a mangueira para iniciar, pausar ou retomar a deflação. O mostrador circular serve para ler a pressão.</p>` : ""}
+			${this._sphygmomanometerPositioned && (pressureInteractionSteps.includes(step.id) || step.id === "estimate-systolic") ? `<p class="step-detail">Em XR, feche a mão perto da pera para pegá-la; afrouxe e aperte os dedos para bombear (+10 mmHg). Abra a mão por um instante para devolvê-la à mesa. Toque a válvula metálica com o indicador da mão livre para iniciar, pausar ou retomar a deflação. No computador, clique na pera ou na válvula.</p>` : ""}
 			${firstSoundHint}
 			${inflationHtml}
 			${deflationControlHtml}
@@ -1427,7 +1453,8 @@ export class InteractionManager {
 		if (pressureBoardActive) {
 			ctx.fillStyle = "#80DEEA";
 			ctx.font = "italic 26px 'Segoe UI', Arial, sans-serif";
-			ctx.fillText("Aperte a pera do aparelho para inflar; use a válvula para desinflar.", 40, 440);
+			ctx.fillText("Segure a pera; afrouxe e aperte a mão para bombear.", 40, 440);
+			ctx.fillText("Toque a válvula com o indicador da mão livre.", 40, 472);
 		} else if (canInflate) {
 			ctx.fillStyle = "#08765A";
 			ctx.beginPath();
@@ -1671,11 +1698,9 @@ export class InteractionManager {
 		}
 		this._guidanceCard?.remove();
 		this._guidanceCard = null;
-		if (this._instrumentFeedback) {
-			this._instrumentFeedback.mesh.scaling.copyFrom(this._instrumentFeedback.rest);
-			this._instrumentFeedback.mesh.rotationQuaternion = this._instrumentFeedback.rotation.clone();
-		}
-		this._instrumentFeedback = null;
+		this._finishInstrumentFeedback();
+		this._handInstruments?.dispose();
+		this._handInstruments = null;
 		// The physical instrument is scene-owned and reused by the XR restart panel.
 		this._instrumentControls = [];
 		this._measurementStand?.dispose(false, true);

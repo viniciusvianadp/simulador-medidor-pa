@@ -87,10 +87,20 @@ export function splitSphygmomanometer(root: TransformNode): Mesh[] {
 		} else controls.push(part);
 	}
 	source.makeGeometryUnique();
+	// The bulb's inlet cap must travel with the held rubber bulb too.
+	const inlet = [...shells.values()].find(shell => shell.min.x < -1.08 && shell.max.x < -0.95 && shell.min.z > 0.78);
+	if (inlet) {
+		const cap = source.clone("instrument-bulb-cap", source.parent, true)!;
+		cap.makeGeometryUnique();
+		cap.setIndices(inlet.indices);
+		cap.setBoundingInfo(new BoundingInfo(inlet.min, inlet.max));
+		cap.metadata = { logicalTarget: "instrument-bulb" };
+		cap.computeWorldMatrix(true);
+	}
 	// The folded cuff and its storage-position hoses are replaced by the fitted
 	// arm cuff and freshly routed hoses. Keep the dial/neck and bulb end cap.
 	const foldedCuff = [...shells.values()].find(shell => shell.min.z < -0.99 && shell.max.z < -0.40);
 	const storageHoses = [...shells.values()].filter(shell => shell.min.x < -0.89 && shell.max.x > 0.25 && shell.min.z < -0.90);
-	source.setIndices([...shells.values()].filter(shell => shell !== bulb && shell !== valve && shell !== foldedCuff && !storageHoses.includes(shell)).flatMap(shell => shell.indices));
+	source.setIndices([...shells.values()].filter(shell => shell !== bulb && shell !== valve && shell !== foldedCuff && shell !== inlet && !storageHoses.includes(shell)).flatMap(shell => shell.indices));
 	return controls;
 }

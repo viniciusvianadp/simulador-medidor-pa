@@ -1,3 +1,5 @@
+import { classifyGrip } from "../interaction/gripGesture";
+import type { InstrumentHandFrame } from "../interaction/HandInstruments";
 import { Scene } from "@babylonjs/core/scene";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { WebXRDefaultExperience } from "@babylonjs/core/XR/webXRDefaultExperience";
@@ -14,6 +16,8 @@ export default class XR {
     private _canGrabStethoscope: (() => boolean) | null = null;
     private _onStethoscopeRelease: ((position: Vector3) => boolean) | null = null;
     private _onHandGrab: ((position: Vector3) => boolean) | null = null;
+    private _onInstrumentHandFrame: ((frame: InstrumentHandFrame) => boolean) | null = null;
+    private _onInstrumentHandLost: ((handId: string) => void) | null = null;
 
     public constructor(public scene: Scene) {}
 
@@ -25,6 +29,14 @@ export default class XR {
         this._canGrabStethoscope = canGrab;
         this._onStethoscopeRelease = onRelease;
         this._onHandGrab = onHandGrab;
+    }
+
+    public setInstrumentHandHandlers(
+        onFrame: (frame: InstrumentHandFrame) => boolean,
+        onLost: (handId: string) => void
+    ): void {
+        this._onInstrumentHandFrame = onFrame;
+        this._onInstrumentHandLost = onLost;
     }
 
     public async onStart(): Promise<void> {
@@ -137,27 +149,66 @@ export default class XR {
                 let stethoscopeOriginalParent: TransformNode | null = null;
                 let stethoscopeOriginalPosition: Vector3 | null = null;
 
-                this.scene.onBeforeRenderObservable.add(() => {
+                const handRenderObserver = this.scene.onBeforeRenderObservable.add(() => {
                     const wrist = hand.getJointMesh(WebXRHandJoint.WRIST);
+                    const knuckle = hand.getJointMesh(WebXRHandJoint.MIDDLE_FINGER_PHALANX_PROXIMAL);
+                    const span = wrist && knuckle ? Vector3.Distance(wrist.getAbsolutePosition(), knuckle.getAbsolutePosition()) : 0.08;
                     const fingerJoints = [
-                        [WebXRHandJoint.INDEX_FINGER_TIP, WebXRHandJoint.INDEX_FINGER_PHALANX_PROXIMAL],
-                        [WebXRHandJoint.MIDDLE_FINGER_TIP, WebXRHandJoint.MIDDLE_FINGER_PHALANX_PROXIMAL],
-                        [WebXRHandJoint.RING_FINGER_TIP, WebXRHandJoint.RING_FINGER_PHALANX_PROXIMAL],
-                        [WebXRHandJoint.PINKY_FINGER_TIP, WebXRHandJoint.PINKY_FINGER_PHALANX_PROXIMAL],
+                        [WebXRHandJoint.INDEX_FINGER_TIP, WebXRHandJoint.INDEX_FINGER_PHALANX_PROXIMAL, WebXRHandJoint.INDEX_FINGER_PHALANX_INTERMEDIATE, WebXRHandJoint.INDEX_FINGER_PHALANX_DISTAL],
+                        [WebXRHandJoint.MIDDLE_FINGER_TIP, WebXRHandJoint.MIDDLE_FINGER_PHALANX_PROXIMAL, WebXRHandJoint.MIDDLE_FINGER_PHALANX_INTERMEDIATE, WebXRHandJoint.MIDDLE_FINGER_PHALANX_DISTAL],
+                        [WebXRHandJoint.RING_FINGER_TIP, WebXRHandJoint.RING_FINGER_PHALANX_PROXIMAL, WebXRHandJoint.RING_FINGER_PHALANX_INTERMEDIATE, WebXRHandJoint.RING_FINGER_PHALANX_DISTAL],
+                        [WebXRHandJoint.PINKY_FINGER_TIP, WebXRHandJoint.PINKY_FINGER_PHALANX_PROXIMAL, WebXRHandJoint.PINKY_FINGER_PHALANX_INTERMEDIATE, WebXRHandJoint.PINKY_FINGER_PHALANX_DISTAL],
                     ] as const;
                     let trackedFingers = 0;
                     let curledFingers = 0;
-                    for (const [tipJoint, proximalJoint] of fingerJoints) {
+                    const curlDistances: number[] = [];
+                    const fingerLengths: number[] = [];
+                    let indexExtended = false;
+                    for (const [tipJoint, proximalJoint, intermediateJoint, distalJoint] of fingerJoints) {
                         const tip = hand.getJointMesh(tipJoint);
                         const proximal = hand.getJointMesh(proximalJoint);
                         if (!tip || !proximal) continue;
                         trackedFingers++;
-                        if (Vector3.Distance(tip.getAbsolutePosition(), proximal.getAbsolutePosition()) < 0.075) {
-                            curledFingers++;
-                        }
+                        const distance = Vector3.Distance(tip.getAbsolutePosition(), proximal.getAbsolutePosition());
+                        curlDistances.push(distance);
+                        const intermediate = hand.getJointMesh(intermediateJoint);
+                        const distal = hand.getJointMesh(distalJoint);
+                        const length = intermediate && distal
+                            ? Vector3.Distance(proximal.getAbsolutePosition(), intermediate.getAbsolutePosition())
+                                + Vector3.Distance(intermediate.getAbsolutePosition(), distal.getAbsolutePosition())
+                                + Vector3.Distance(distal.getAbsolutePosition(), tip.getAbsolutePosition())
+                            : span;
+                        fingerLengths.push(length);
+                        if (tipJoint === WebXRHandJoint.INDEX_FINGER_TIP) indexExtended = distance > length * 0.70;
+                        if (distance < 0.075) curledFingers++;
                     }
                     const fistGrab = trackedFingers >= 3 && curledFingers >= 3;
                     const fistRelease = trackedFingers >= 3 && curledFingers < 2;
+                    const palm = wrist && knuckle
+                        ? Vector3.Lerp(wrist.getAbsolutePosition(), knuckle.getAbsolutePosition(), 0.65)
+                        : wrist?.getAbsolutePosition() ?? Vector3.Zero();
+                    const gesture = classifyGrip(curlDistances, span, fingerLengths);
+                    const indexTip = hand.getJointMesh(WebXRHandJoint.INDEX_FINGER_TIP);
+                    const xrFrame = xr.baseExperience.sessionManager.currentFrame;
+                    const referenceSpace = xr.baseExperience.sessionManager.referenceSpace;
+                    const wristSpace = hand.xrController.inputSource.hand?.get(WebXRHandJoint.WRIST);
+                    // Babylon leaves the previous joint meshes in place when a
+                    // hand pose is unavailable; do not pump from those stale poses.
+                    if (!wrist || !xrFrame || !referenceSpace || !wristSpace
+                        || !xrFrame.getJointPose?.(wristSpace, referenceSpace)) gesture.tracked = false;
+                    if (stethoscopeHand !== handedness && this._onInstrumentHandFrame?.({
+                        handId: hand.xrController.uniqueId, wrist, palm,
+                        indexTip: indexTip?.getAbsolutePosition() ?? null,
+                        indexExtended,
+                        gesture, now: performance.now(),
+                    })) {
+                        wasFistGrabbing = fistGrab;
+                        return;
+                    }
+                    if (!gesture.tracked) {
+                        wasFistGrabbing = false;
+                        return;
+                    }
 
                     // A closed hand picks up the stethoscope; opening it releases.
                     // This whole-hand gesture is easier to form than a fingertip pinch.
@@ -179,15 +230,7 @@ export default class XR {
                                 pickedUpStethoscope = true;
                             }
                         }
-                        if (!pickedUpStethoscope && wrist) {
-                            const knuckle = hand.getJointMesh(WebXRHandJoint.MIDDLE_FINGER_PHALANX_PROXIMAL);
-                            // Use the palm for direct instrument contact; the wrist
-                            // sits behind the bulb/valve when the hand closes on it.
-                            const grabPosition = knuckle
-                                ? Vector3.Lerp(wrist.getAbsolutePosition(), knuckle.getAbsolutePosition(), 0.65)
-                                : wrist.getAbsolutePosition();
-                            this._onHandGrab?.(grabPosition);
-                        }
+                        if (!pickedUpStethoscope && wrist) this._onHandGrab?.(palm);
                     } else if (wasFistGrabbing && fistRelease) {
                         wasFistGrabbing = false;
                         if (stethoscopeHand === handedness && grabbedStethoscope && wrist) {
@@ -205,6 +248,17 @@ export default class XR {
                         }
                     }
 
+                });
+                const removedObserver = handTracking.onHandRemovedObservable.add(removed => {
+                    if (removed.xrController.uniqueId !== hand.xrController.uniqueId) return;
+                    this._onInstrumentHandLost?.(hand.xrController.uniqueId);
+                    this.scene.onBeforeRenderObservable.remove(handRenderObserver);
+                    if (stethoscopeHand === handedness && grabbedStethoscope) {
+                        grabbedStethoscope.setParent(stethoscopeOriginalParent, true);
+                        if (stethoscopeOriginalPosition) grabbedStethoscope.setAbsolutePosition(stethoscopeOriginalPosition);
+                        stethoscopeHand = null;
+                    }
+                    handTracking.onHandRemovedObservable.remove(removedObserver);
                 });
             });
         } catch (error) {

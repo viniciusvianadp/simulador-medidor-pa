@@ -61,7 +61,7 @@ export const clinicalLayout = {
 	},
 
 	soapDispenser: [0.792, 1.272, -2.391] as Vec3,
-	dialogueTrigger: [-1.66, 1.352, -0.695] as Vec3,
+	dialogueTrigger: [-1.84, 1.85, -1.095] as Vec3,
 	/** General XR guidance slate, offset from the wall behind the sanitizer. */
 	xrSlate: [-2.3, 1.85, -0.62] as Vec3,
 	/** Restart/mode panel on the empty front wall (+Z), facing into the room. */

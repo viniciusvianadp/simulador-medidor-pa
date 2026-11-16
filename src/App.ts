@@ -216,6 +216,10 @@ export class App {
 				position => this._interactionManager?.handleStethoscopeRelease(position) ?? false,
 				position => this._interactionManager?.handleHandGrabInteraction(position) ?? false
 			);
+			this._xr?.setInstrumentHandHandlers(
+				frame => this._interactionManager?.handleInstrumentHandFrame(frame) ?? false,
+				handId => this._interactionManager?.handleInstrumentHandLost(handId),
+			);
 			this._engine.runRenderLoop(() => {
 				const now = this.getSimulatedTime();
 				this._simulation?.advancePressure(now);

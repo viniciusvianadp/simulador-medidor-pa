@@ -15,23 +15,37 @@ export function connectCuffInstrument(cuff: Mesh, instrument: TransformNode): Tr
 	source.computeWorldMatrix(true);
 	const connections = [new Vector3(0.435, 0.20, 0), new Vector3(-0.287, 0.179, 0.846)];
 	const ports = cuff.metadata.hosePorts as number[][];
+	const valveBody = scene.getMeshByName("instrument-valve-body");
 	const root = new TransformNode("fitted-cuff-hoses", scene);
 	const rubber = new StandardMaterial("fitted-cuff-hose-rubber", scene);
 	rubber.diffuseColor = Color3.FromHexString("#171c20");
 	rubber.specularColor.setAll(0.08);
-	for (let index = 0; index < connections.length; index++) {
-		const start = Vector3.TransformCoordinates(Vector3.FromArray(ports[index]), cuff.getWorldMatrix());
-		const end = Vector3.TransformCoordinates(connections[index], source.getWorldMatrix());
-		const path = Curve3.CreateCubicBezier(
-			// Lift out from the cuff on the measured-arm side before dropping
-			// toward the instrument, keeping both hoses outside the forearm.
-			start, start.add(new Vector3(0.25, 0.14, index ? -0.015 : -0.04)),
-			end.add(new Vector3(-0.02, 0.10, index ? -0.02 : -0.04)), end, 40,
-		).getPoints();
-		const tube = CreateTube(`fitted-cuff-hose-${index}`, { path, radius: 0.003, tessellation: 10, cap: Mesh.CAP_ALL }, scene);
-		tube.parent = root;
-		tube.material = rubber;
-		tube.metadata = { logicalTarget: "gauge", instrumentRole: "pressure-hose" };
-	}
+	const tubes: Mesh[] = [];
+	const lastEnds: Vector3[] = [];
+	const update = (): void => {
+		for (let index = 0; index < connections.length; index++) {
+			const connector = index === 1 && valveBody ? valveBody : source;
+			connector.computeWorldMatrix(true);
+			const end = Vector3.TransformCoordinates(connections[index], connector.getWorldMatrix());
+			if (lastEnds[index] && Vector3.DistanceSquared(lastEnds[index], end) < 0.000001) continue;
+			const start = Vector3.TransformCoordinates(Vector3.FromArray(ports[index]), cuff.getWorldMatrix());
+			const path = Curve3.CreateCubicBezier(
+				start, start.add(new Vector3(0.25, 0.14, index ? -0.015 : -0.04)),
+				end.add(new Vector3(-0.02, 0.10, index ? -0.02 : -0.04)), end, 40,
+			).getPoints();
+			const tube = CreateTube(`fitted-cuff-hose-${index}`, {
+				path, radius: 0.003, tessellation: 10, cap: Mesh.CAP_ALL,
+				updatable: true, instance: tubes[index],
+			}, scene);
+			tube.parent = root;
+			tube.material = rubber;
+			tube.metadata = { logicalTarget: "gauge", instrumentRole: "pressure-hose" };
+			tubes[index] = tube;
+			lastEnds[index] = end;
+		}
+	};
+	update();
+	const observer = scene.onBeforeRenderObservable.add(update);
+	root.onDisposeObservable.add(() => scene.onBeforeRenderObservable.remove(observer));
 	return root;
 }
