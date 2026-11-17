@@ -1,0 +1,9 @@
+{
+  "identification-professional": "Profissional: Olá! Sou responsável pela medição da sua pressão. Qual é seu nome completo e sua data de nascimento?",
+  "readiness-professional": "Profissional: Sua bexiga está vazia? Fez exercício, caminhada ou fisioterapia nos últimos 90 minutos? Consumiu café, álcool ou tabaco nos últimos 30 minutos?",
+  "readiness-patient": "Paciente: Minha bexiga está vazia. Não fiz essas atividades nos últimos 90 minutos e não consumi essas substâncias nos últimos 30 minutos.",
+  "explanation-professional": "Profissional: Vou medir sua pressão arterial. Vamos manter cinco minutos de repouso calmo. Durante a medição, fique em silêncio. Tem alguma dúvida?",
+  "explanation-patient": "Paciente: Entendi e não tenho dúvidas. Vou descansar e permanecer em silêncio durante a medição.",
+  "results-patient": "Paciente: Obrigado por me informar o resultado.",
+  "rest-narrator": "Repouso de cinco minutos: tempo simulado avançado automaticamente."
+}

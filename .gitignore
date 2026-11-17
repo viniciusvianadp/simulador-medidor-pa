@@ -37,3 +37,7 @@ Desktop.ini
 # Scratch scripts and temporary test files
 scratch/
 
+
+# Local dialogue generation cache
+/assets/Audio/dialogue/*.sha256
+/assets/Audio/dialogue/.generation.json

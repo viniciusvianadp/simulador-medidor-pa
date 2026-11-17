@@ -1,3 +1,5 @@
+import dialoguePhrases from "./dialoguePhrases.json";
+import { DialogueAudio } from "./DialogueAudio";
 import { HandInstruments, type InstrumentHandFrame } from "./HandInstruments";
 import { connectCuffInstrument } from "../scene/connectCuffInstrument";
 import { Scene } from "@babylonjs/core/scene";
@@ -46,6 +48,9 @@ const targetInfo: Record<string, TargetMeta> = {
 	"dialogue-trigger": { label: "Diálogo com o Paciente", icon: "💬", station: "cadeira" },
 };
 
+const spokenTopics = ["identify-patient", "check-readiness", "explain-and-rest", "inform-patient"] as const;
+type SpokenTopic = typeof spokenTopics[number];
+
 const unguidedHeadline = "Modo sem orientação";
 const unguidedDetail = "Realize a próxima etapa do procedimento conforme o checklist.";
 
@@ -87,9 +92,17 @@ export class InteractionManager {
 	private _dialogueTriggerMesh: Mesh | null = null;
 	private _guidanceCard: HTMLElement | null = null;
 	private _dialogueOpen = false;
+	private _speaking = false;
+	private _spokenSubtitle = "";
+	private _speechTimer: ReturnType<typeof setTimeout> | null = null;
+	private _speechUtterance: SpeechSynthesisUtterance | null = null;
+	private _cancelSpeech: (() => void) | null = null;
+	private _slateRestPosition: Vector3 | null = null;
+	private _slateRestRotation: Vector3 | null = null;
 	private _lastDialogueText: string | null = null;
 	private _disposed = false;
 	private _audio = new SimulationAudio();
+	private _dialogueAudio = new DialogueAudio();
 	private _restartPanel: RestartPanel | null = null;
 	private _pointerObserver: Nullable<Observer<PointerInfo>> = null;
 	private _renderObserver: Nullable<Observer<Scene>> = null;
@@ -101,7 +114,7 @@ export class InteractionManager {
 		this._initTargetArrow();
 		this._initXrSlate();
 		this._initXrPressureBoard();
-		this._initDialogueTrigger();
+		if (this._isEvaluationMode()) this._initDialogueTrigger();
 		this._initGuidanceHUD();
 		// Defer the reset: it disposes this manager, which is still handling the pick.
 		this._restartPanel = new RestartPanel(scene, app.getGuidanceMode(),
@@ -307,6 +320,7 @@ export class InteractionManager {
 			if (this._disposed) return;
 			time += 0.04;
 			this._updateVisualMotions();
+			this._updateSpokenDialogue();
 			if (this._instrumentFeedback) {
 				const { mesh, rest, rotation, startedAt } = this._instrumentFeedback;
 				const progress = Math.min(1, (performance.now() - startedAt) / 180);
@@ -344,10 +358,11 @@ export class InteractionManager {
 		plane.isPickable = false;
 
 		const texture = new DynamicTexture("xr-guidance-texture", { width: 1024, height: 512 }, this._scene, false);
-		texture.hasAlpha = false;
+		texture.hasAlpha = true;
 
 		const mat = new StandardMaterial("xr-guidance-slate-mat", this._scene);
 		mat.diffuseTexture = texture;
+		mat.useAlphaFromDiffuseTexture = true;
 		mat.emissiveColor = Color3.White();
 		mat.specularColor = Color3.Black();
 		mat.backFaceCulling = false;
@@ -1009,6 +1024,7 @@ export class InteractionManager {
 	}
 
 	public dispatchAction(event: InteractionEvent): boolean {
+		if (this._isSpokenStep()) return false;
 		const result = this._app.dispatchSimulationEvent(event);
 		if (!result) return false;
 
@@ -1029,6 +1045,7 @@ export class InteractionManager {
 	}
 
 	public openDialogueModal(): void {
+		if (!this._isEvaluationMode()) return;
 		this._dialogueOpen = true;
 		this._updateGuidance();
 	}
@@ -1039,6 +1056,7 @@ export class InteractionManager {
 	}
 
 	public triggerDialogueTopic(topicId: "identify-patient" | "check-readiness" | "explain-and-rest" | "inform-patient"): void {
+		if (!this._isEvaluationMode()) return;
 		if (topicId === "explain-and-rest") {
 			this._app.advanceSimulatedTime(300000);
 		}
@@ -1056,6 +1074,226 @@ export class InteractionManager {
 			this._audio.playChime(false);
 		}
 
+		this._updateGuidance();
+	}
+
+	private _isSpokenStep(): boolean {
+		return !this._isEvaluationMode() && spokenTopics.includes(this._app.getSimulationSnapshot()?.currentStepId as SpokenTopic);
+	}
+
+	private _renderSpokenDialogue(): void {
+		if (!this._guidanceCard) return;
+		this._guidanceCard.classList.add("spoken-dialogue-hud");
+		const text = this._spokenSubtitle || "Vá à frente do paciente para iniciar a conversa automaticamente.";
+		this._guidanceCard.innerHTML = '<h3>Modo de diálogo</h3><p aria-live="polite"></p><small>Áudio em português • legendas automáticas</small>';
+		this._guidanceCard.querySelector("p")!.textContent = text;
+		this._arrowRoot?.setEnabled(false);
+		this._xrDialogueTargets.forEach(target => target.setEnabled(false));
+		this._xrPressureBoardRoot?.setEnabled(false);
+		this._renderXrSlate(0, "Modo de diálogo", text, "Paciente", "Paciente", null);
+		if (this._xrSlateTexture) {
+			const ctx = this._xrSlateTexture.getContext() as unknown as CanvasRenderingContext2D;
+			ctx.clearRect(0, 0, 1024, 512);
+			ctx.fillStyle = "#f4f6f1";
+			ctx.strokeStyle = "#1b5947";
+			ctx.lineWidth = 6;
+			ctx.beginPath();
+			ctx.roundRect(4, 4, 1016, 504, 28);
+			ctx.fill();
+			ctx.stroke();
+			// Green header and soft inset card echo the restart panel's controls.
+			ctx.save();
+			ctx.beginPath();
+			ctx.roundRect(7, 7, 1010, 498, 24);
+			ctx.clip();
+			ctx.fillStyle = "#1b5947";
+			ctx.fillRect(7, 7, 1010, 78);
+			ctx.restore();
+			ctx.fillStyle = "#ffffff";
+			ctx.font = "bold 25px 'Segoe UI', Arial, sans-serif";
+			ctx.fillText("CONVERSA COM O PACIENTE", 40, 55);
+			const topic = this._app.getSimulationSnapshot()?.currentStepId as SpokenTopic;
+			const topicIndex = spokenTopics.indexOf(topic);
+			if (topicIndex < 3) {
+				for (let index = 0; index < 3; index++) {
+					ctx.fillStyle = index <= topicIndex ? "#e2eee5" : "#538171";
+					ctx.beginPath();
+					ctx.roundRect(820 + index * 52, 36, 40, 10, 5);
+					ctx.fill();
+				}
+			}
+			ctx.fillStyle = "#173c34";
+			ctx.font = "bold 38px 'Segoe UI', Arial, sans-serif";
+			const titles: Record<SpokenTopic, string> = {
+				"identify-patient": "1 de 3 · Identificação",
+				"check-readiness": "2 de 3 · Condições de preparo",
+				"explain-and-rest": "3 de 3 · Orientações e repouso",
+				"inform-patient": "Comunicação do resultado",
+			};
+			ctx.fillText(this._spokenSubtitle ? titles[this._app.getSimulationSnapshot()?.currentStepId as SpokenTopic] ?? "Conversa com o paciente" : "Vamos conversar?", 40, 140);
+			ctx.fillStyle = "#e7eee5";
+			ctx.beginPath();
+			ctx.roundRect(32, 162, 960, 264, 20);
+			ctx.fill();
+			const isPatient = text.startsWith("Paciente:");
+			const speaker = text.startsWith("Profissional:") ? "PROFISSIONAL" : isPatient ? "PACIENTE" : "ORIENTAÇÃO";
+			ctx.fillStyle = "#1b5947";
+			ctx.font = "bold 23px 'Segoe UI', Arial, sans-serif";
+			ctx.fillText(speaker, 54, 204);
+			ctx.fillStyle = "#304e43";
+			ctx.font = "32px 'Segoe UI', Arial, sans-serif";
+			this._drawWrappedText(ctx, text.replace(/^(Profissional|Paciente):\s*/, ""), 54, 252, 916, 38);
+			ctx.strokeStyle = "#c7d4ca";
+			ctx.lineWidth = 2;
+			ctx.beginPath();
+			ctx.moveTo(40, 448);
+			ctx.lineTo(984, 448);
+			ctx.stroke();
+			ctx.fillStyle = "#51685e";
+			ctx.font = "25px 'Segoe UI', Arial, sans-serif";
+			ctx.fillText(this._spokenSubtitle ? "Vozes sintetizadas • acompanhe as legendas" : "Aproxime-se e olhe para o paciente • início automático", 40, 485);
+			this._xrSlateTexture.update();
+		}
+		if (this._xrSlatePlane) {
+			this._xrSlatePlane.scaling.setAll(0.55);
+			this._xrSlatePlane.renderingGroupId = 3;
+		}
+	}
+
+	private _updateSpokenDialogue(): void {
+		const root = this._xrSlateRoot;
+		const camera = this._scene.activeCamera;
+		if (!root || !camera) return;
+		if (!this._isSpokenStep()) {
+			if (this._slateRestPosition) {
+				root.position.copyFrom(this._slateRestPosition);
+				if (this._xrSlatePlane) {
+					this._xrSlatePlane.scaling.setAll(1);
+					this._xrSlatePlane.renderingGroupId = 0;
+				}
+				root.rotationQuaternion = null;
+				root.rotation.copyFrom(this._slateRestRotation!);
+				this._slateRestPosition = null;
+			}
+			return;
+		}
+		if (!this._slateRestPosition) {
+			this._slateRestPosition = root.position.clone();
+			this._slateRestRotation = root.rotation.clone();
+		}
+		root.position.copyFrom(camera.globalPosition.add(camera.getForwardRay().direction.scale(0.85))
+			.add(camera.getDirection(Vector3.Down()).scale(0.12)));
+		root.rotationQuaternion = Quaternion.FromRotationMatrix(camera.getWorldMatrix());
+		const patient = this._scene.getTransformNodeByName("patient-root");
+		if (!patient || this._speaking) return;
+		const bounds = patient.getHierarchyBoundingVectors(true);
+		const center = bounds.min.add(bounds.max).scale(0.5);
+		const towardPatient = center.subtract(camera.globalPosition);
+		towardPatient.y = 0;
+		if (towardPatient.length() > clinicalLayout.dialogueApproachRadius) return;
+		const forward = camera.getForwardRay().direction.clone();
+		forward.y = 0;
+		// Accept natural approach positions around the patient, not a hidden station waypoint.
+		if (towardPatient.length() > 0.25 && Vector3.Dot(forward.normalize(), towardPatient.normalize()) < 0.35) return;
+		void this._playSpokenTopic(this._app.getSimulationSnapshot()!.currentStepId as SpokenTopic);
+	}
+
+	private _speak(text: string, useRecording = true): Promise<void> {
+		const recording = useRecording ? this._dialogueAudio.getClip(text, this._app.getSimulationSnapshot()?.config.patient.voiceProfile ?? "male") : undefined;
+		if (recording) {
+			this._spokenSubtitle = text;
+			this._renderSpokenDialogue();
+			return this._dialogueAudio.play(recording).then(played => {
+				if (!played && !this._disposed) return this._speak(text, false);
+			});
+		}
+		this._spokenSubtitle = text;
+		this._renderSpokenDialogue();
+		return new Promise(resolve => {
+			let finished = false;
+			let usingSubtitles = false;
+			let timer: ReturnType<typeof setTimeout> | null = null;
+			let utterance: SpeechSynthesisUtterance | null = null;
+			const clearTimer = () => {
+				if (timer !== null) clearTimeout(timer);
+				if (this._speechTimer === timer) this._speechTimer = null;
+				timer = null;
+			};
+			const detachSpeech = () => {
+				if (!utterance) return;
+				utterance.onend = null;
+				utterance.onerror = null;
+			};
+			const finish = () => {
+				if (finished) return;
+				finished = true;
+				clearTimer();
+				detachSpeech();
+				if (this._speechUtterance === utterance) this._speechUtterance = null;
+				if (this._cancelSpeech === finish) this._cancelSpeech = null;
+				resolve();
+			};
+			this._cancelSpeech = finish;
+			const fallback = () => {
+				if (finished || usingSubtitles || this._disposed) return;
+				usingSubtitles = true;
+				// Retire the speech watchdog before starting the subtitle reading timer.
+				clearTimer();
+				detachSpeech();
+				if (utterance) window.speechSynthesis.cancel();
+				this._spokenSubtitle = text + " (Áudio indisponível; acompanhe a legenda.)";
+				this._renderSpokenDialogue();
+				timer = setTimeout(finish, Math.max(3500, text.length * 65));
+				this._speechTimer = timer;
+			};
+			if (!("speechSynthesis" in window)) { fallback(); return; }
+			utterance = new SpeechSynthesisUtterance(text);
+			this._speechUtterance = utterance;
+			utterance.lang = "pt-BR";
+			utterance.rate = 0.95;
+			utterance.voice = window.speechSynthesis.getVoices().find(voice => voice.lang === "pt-BR") ?? null;
+			utterance.onend = finish;
+			utterance.onerror = fallback;
+			// Some browsers neither start nor reject speech without user activation.
+			timer = setTimeout(fallback, Math.max(15000, text.length * 160));
+			this._speechTimer = timer;
+			try {
+				window.speechSynthesis.speak(utterance);
+			} catch {
+				fallback();
+			}
+		});
+	}
+
+	private async _playSpokenTopic(topic: SpokenTopic): Promise<void> {
+		this._speaking = true;
+		const snapshot = this._app.getSimulationSnapshot()!;
+		const config = snapshot.config;
+		const systolic = snapshot.observations["identify-systolic:first-sound-recorded"];
+		const diastolic = snapshot.observations[config.persistentSounds ? "persistent-sounds:muffling-recorded" : "identify-diastolic:sound-disappearance-recorded"];
+		const exchanges: Record<SpokenTopic, [string, string]> = {
+			"identify-patient": [dialoguePhrases["identification-professional"], `Paciente: Meu nome é ${config.patient.name} e nasci em ${config.patient.dateOfBirth}.`],
+			"check-readiness": [dialoguePhrases["readiness-professional"], dialoguePhrases["readiness-patient"]],
+			"explain-and-rest": [dialoguePhrases["explanation-professional"], dialoguePhrases["explanation-patient"]],
+			"inform-patient": [`Profissional: Sua pressão medida foi ${systolic} por ${diastolic} milímetros de mercúrio.${config.persistentSounds ? " Os sons persistiram até zero; o abafamento foi registrado." : ""}`, config.patient.voiceProfile === "female" ? dialoguePhrases["results-patient"].replace("Obrigado", "Obrigada") : dialoguePhrases["results-patient"]],
+		};
+		for (const line of exchanges[topic]) {
+			await this._speak(line);
+			if (this._disposed) return;
+		}
+		if (topic === "explain-and-rest") {
+			await this._speak(dialoguePhrases["rest-narrator"]);
+			if (this._disposed) return;
+			this._app.advanceSimulatedTime(300000);
+		}
+		this._app.completeSpokenDialogue(topic);
+		if (this._isSpokenStep()) {
+			// Continue the initial exchange without flashing the approach prompt again.
+			await this._playSpokenTopic(this._app.getSimulationSnapshot()!.currentStepId as SpokenTopic);
+			return;
+		}
+		this._speaking = false;
+		this._spokenSubtitle = "";
 		this._updateGuidance();
 	}
 
@@ -1079,9 +1317,15 @@ export class InteractionManager {
 	private _updateGuidance(): void {
 		const snapshot = this._app.getSimulationSnapshot();
 		if (!snapshot || !this._guidanceCard) return;
+		this._guidanceCard.classList.remove("spoken-dialogue-hud");
 
 		if (snapshot.completed) {
 			this._renderCompletionHUD(snapshot);
+			return;
+		}
+
+		if (this._isSpokenStep()) {
+			this._renderSpokenDialogue();
 			return;
 		}
 
@@ -1247,6 +1491,7 @@ export class InteractionManager {
 			<div class="step-toast-feedback" id="hud-toast" hidden></div>
 		`;
 
+		if (!this._isEvaluationMode()) this._guidanceCard.querySelector("#hud-open-dialogue-btn")?.remove();
 		const dialogueBtn = this._guidanceCard.querySelector("#hud-open-dialogue-btn") as HTMLButtonElement | null;
 		dialogueBtn?.addEventListener("click", () => {
 			this.openDialogueModal();
@@ -1683,6 +1928,16 @@ export class InteractionManager {
 
 	public dispose(): void {
 		this._disposed = true;
+		this._dialogueAudio.dispose();
+		const hadSpeech = this._speechUtterance !== null;
+		this._cancelSpeech?.();
+		if (hadSpeech) window.speechSynthesis?.cancel();
+		if (this._speechTimer) clearTimeout(this._speechTimer);
+		if (this._speechUtterance) {
+			this._speechUtterance.onend = null;
+			this._speechUtterance.onerror = null;
+			window.speechSynthesis?.cancel();
+		}
 		this._visualMotions = [];
 		if (this._pointerObserver) {
 			this._scene.onPointerObservable.remove(this._pointerObserver);

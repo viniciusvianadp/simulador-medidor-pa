@@ -11,6 +11,7 @@
 		"dev": "vite",
 		"build": "vite build",
 		"generate": "babylonjs-editor-cli pack",
+		"dialogue:generate": "node scripts/generate-dialogue-audio.mjs",
 		"cuffs:generate": "node scripts/generate-cuffs.mjs",
 		"serve": "vite preview"
 	},

@@ -1,0 +1,2550 @@
+{
+  "generator": "piper-tts 1.8.0 + kokoro-onnx 0.4.7",
+  "clips": [
+    {
+      "id": "identification-professional",
+      "profile": "shared",
+      "text": "Profissional: Olá! Sou responsável pela medição da sua pressão. Qual é seu nome completo e sua data de nascimento?",
+      "voice": "pt_BR-cadu-medium",
+      "spokenText": "Olá! Sou responsável pela medição da sua pressão. Qual é seu nome completo e sua data de nascimento?"
+    },
+    {
+      "id": "readiness-professional",
+      "profile": "shared",
+      "text": "Profissional: Sua bexiga está vazia? Fez exercício, caminhada ou fisioterapia nos últimos 90 minutos? Consumiu café, álcool ou tabaco nos últimos 30 minutos?",
+      "voice": "pt_BR-cadu-medium",
+      "spokenText": "Sua bexiga está vazia? Fez exercício, caminhada ou fisioterapia nos últimos 90 minutos? Consumiu café, álcool ou tabaco nos últimos 30 minutos?"
+    },
+    {
+      "id": "readiness-patient",
+      "profile": "male",
+      "text": "Paciente: Minha bexiga está vazia. Não fiz essas atividades nos últimos 90 minutos e não consumi essas substâncias nos últimos 30 minutos.",
+      "voice": "pt_BR-faber-medium",
+      "spokenText": "Minha bexiga está vazia. Não fiz essas atividades nos últimos 90 minutos e não consumi essas substâncias nos últimos 30 minutos."
+    },
+    {
+      "id": "readiness-patient-female",
+      "profile": "female",
+      "text": "Paciente: Minha bexiga está vazia. Não fiz essas atividades nos últimos 90 minutos e não consumi essas substâncias nos últimos 30 minutos.",
+      "voice": "pf_dora",
+      "spokenText": "Minha bexiga está vazia. Não fiz essas atividades nos últimos 90 minutos e não consumi essas substâncias nos últimos 30 minutos."
+    },
+    {
+      "id": "explanation-professional",
+      "profile": "shared",
+      "text": "Profissional: Vou medir sua pressão arterial. Vamos manter cinco minutos de repouso calmo. Durante a medição, fique em silêncio. Tem alguma dúvida?",
+      "voice": "pt_BR-cadu-medium",
+      "spokenText": "Vou medir sua pressão arterial. Vamos manter cinco minutos de repouso calmo. Durante a medição, fique em silêncio. Tem alguma dúvida?"
+    },
+    {
+      "id": "explanation-patient",
+      "profile": "male",
+      "text": "Paciente: Entendi e não tenho dúvidas. Vou descansar e permanecer em silêncio durante a medição.",
+      "voice": "pt_BR-faber-medium",
+      "spokenText": "Entendi e não tenho dúvidas. Vou descansar e permanecer em silêncio durante a medição."
+    },
+    {
+      "id": "explanation-patient-female",
+      "profile": "female",
+      "text": "Paciente: Entendi e não tenho dúvidas. Vou descansar e permanecer em silêncio durante a medição.",
+      "voice": "pf_dora",
+      "spokenText": "Entendi e não tenho dúvidas. Vou descansar e permanecer em silêncio durante a medição."
+    },
+    {
+      "id": "results-patient",
+      "profile": "male",
+      "text": "Paciente: Obrigado por me informar o resultado.",
+      "voice": "pt_BR-faber-medium",
+      "spokenText": "Obrigado por me informar o resultado."
+    },
+    {
+      "id": "results-patient-female",
+      "profile": "female",
+      "text": "Paciente: Obrigada por me informar o resultado.",
+      "voice": "pf_dora",
+      "spokenText": "Obrigada por me informar o resultado."
+    },
+    {
+      "id": "rest-narrator",
+      "profile": "shared",
+      "text": "Repouso de cinco minutos: tempo simulado avançado automaticamente.",
+      "voice": "pt_BR-cadu-medium",
+      "spokenText": "Repouso de cinco minutos: tempo simulado avançado automaticamente."
+    },
+    {
+      "id": "identity-ana-standard",
+      "profile": "female",
+      "voice": "pf_dora",
+      "text": "Paciente: Meu nome é Ana e nasci em 1980-05-12.",
+      "spokenText": "Meu nome é Ana e nasci em 12 de maio de 1980."
+    },
+    {
+      "id": "identity-bruno-large-cuff",
+      "profile": "male",
+      "voice": "pt_BR-faber-medium",
+      "text": "Paciente: Meu nome é Bruno e nasci em 1965-09-23.",
+      "spokenText": "Meu nome é Bruno e nasci em 23 de setembro de 1965."
+    },
+    {
+      "id": "identity-clara-small-cuff",
+      "profile": "female",
+      "voice": "pf_dora",
+      "text": "Paciente: Meu nome é Clara e nasci em 1997-02-08.",
+      "spokenText": "Meu nome é Clara e nasci em 8 de fevereiro de 1997."
+    },
+    {
+      "id": "identity-diego-persistent",
+      "profile": "male",
+      "voice": "pt_BR-faber-medium",
+      "text": "Paciente: Meu nome é Diego e nasci em 1988-11-19.",
+      "spokenText": "Meu nome é Diego e nasci em 19 de novembro de 1988."
+    },
+    {
+      "id": "identity-elisa-infant-cuff",
+      "profile": "female",
+      "voice": "pf_dora",
+      "text": "Paciente: Meu nome é Elisa e nasci em 2001-06-04.",
+      "spokenText": "Meu nome é Elisa e nasci em 4 de junho de 2001."
+    },
+    {
+      "id": "results-prefix",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@results-prefix",
+      "spokenText": "Sua pressão medida foi",
+      "trim": true
+    },
+    {
+      "id": "results-por",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@results-por",
+      "spokenText": "por",
+      "trim": true
+    },
+    {
+      "id": "results-unit",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@results-unit",
+      "spokenText": "milímetros de mercúrio.",
+      "trim": true
+    },
+    {
+      "id": "results-persistent",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@results-persistent",
+      "spokenText": "Os sons persistiram até zero; o abafamento foi registrado.",
+      "trim": true
+    },
+    {
+      "id": "number-0",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-0",
+      "spokenText": "zero",
+      "trim": true
+    },
+    {
+      "id": "number-1",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-1",
+      "spokenText": "um",
+      "trim": true
+    },
+    {
+      "id": "number-2",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-2",
+      "spokenText": "dois",
+      "trim": true
+    },
+    {
+      "id": "number-3",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-3",
+      "spokenText": "três",
+      "trim": true
+    },
+    {
+      "id": "number-4",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-4",
+      "spokenText": "quatro",
+      "trim": true
+    },
+    {
+      "id": "number-5",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-5",
+      "spokenText": "cinco",
+      "trim": true
+    },
+    {
+      "id": "number-6",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-6",
+      "spokenText": "seis",
+      "trim": true
+    },
+    {
+      "id": "number-7",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-7",
+      "spokenText": "sete",
+      "trim": true
+    },
+    {
+      "id": "number-8",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-8",
+      "spokenText": "oito",
+      "trim": true
+    },
+    {
+      "id": "number-9",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-9",
+      "spokenText": "nove",
+      "trim": true
+    },
+    {
+      "id": "number-10",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-10",
+      "spokenText": "dez",
+      "trim": true
+    },
+    {
+      "id": "number-11",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-11",
+      "spokenText": "onze",
+      "trim": true
+    },
+    {
+      "id": "number-12",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-12",
+      "spokenText": "doze",
+      "trim": true
+    },
+    {
+      "id": "number-13",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-13",
+      "spokenText": "treze",
+      "trim": true
+    },
+    {
+      "id": "number-14",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-14",
+      "spokenText": "catorze",
+      "trim": true
+    },
+    {
+      "id": "number-15",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-15",
+      "spokenText": "quinze",
+      "trim": true
+    },
+    {
+      "id": "number-16",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-16",
+      "spokenText": "dezesseis",
+      "trim": true
+    },
+    {
+      "id": "number-17",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-17",
+      "spokenText": "dezessete",
+      "trim": true
+    },
+    {
+      "id": "number-18",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-18",
+      "spokenText": "dezoito",
+      "trim": true
+    },
+    {
+      "id": "number-19",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-19",
+      "spokenText": "dezenove",
+      "trim": true
+    },
+    {
+      "id": "number-20",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-20",
+      "spokenText": "vinte",
+      "trim": true
+    },
+    {
+      "id": "number-21",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-21",
+      "spokenText": "vinte e um",
+      "trim": true
+    },
+    {
+      "id": "number-22",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-22",
+      "spokenText": "vinte e dois",
+      "trim": true
+    },
+    {
+      "id": "number-23",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-23",
+      "spokenText": "vinte e três",
+      "trim": true
+    },
+    {
+      "id": "number-24",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-24",
+      "spokenText": "vinte e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-25",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-25",
+      "spokenText": "vinte e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-26",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-26",
+      "spokenText": "vinte e seis",
+      "trim": true
+    },
+    {
+      "id": "number-27",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-27",
+      "spokenText": "vinte e sete",
+      "trim": true
+    },
+    {
+      "id": "number-28",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-28",
+      "spokenText": "vinte e oito",
+      "trim": true
+    },
+    {
+      "id": "number-29",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-29",
+      "spokenText": "vinte e nove",
+      "trim": true
+    },
+    {
+      "id": "number-30",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-30",
+      "spokenText": "trinta",
+      "trim": true
+    },
+    {
+      "id": "number-31",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-31",
+      "spokenText": "trinta e um",
+      "trim": true
+    },
+    {
+      "id": "number-32",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-32",
+      "spokenText": "trinta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-33",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-33",
+      "spokenText": "trinta e três",
+      "trim": true
+    },
+    {
+      "id": "number-34",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-34",
+      "spokenText": "trinta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-35",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-35",
+      "spokenText": "trinta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-36",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-36",
+      "spokenText": "trinta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-37",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-37",
+      "spokenText": "trinta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-38",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-38",
+      "spokenText": "trinta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-39",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-39",
+      "spokenText": "trinta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-40",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-40",
+      "spokenText": "quarenta",
+      "trim": true
+    },
+    {
+      "id": "number-41",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-41",
+      "spokenText": "quarenta e um",
+      "trim": true
+    },
+    {
+      "id": "number-42",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-42",
+      "spokenText": "quarenta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-43",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-43",
+      "spokenText": "quarenta e três",
+      "trim": true
+    },
+    {
+      "id": "number-44",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-44",
+      "spokenText": "quarenta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-45",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-45",
+      "spokenText": "quarenta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-46",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-46",
+      "spokenText": "quarenta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-47",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-47",
+      "spokenText": "quarenta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-48",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-48",
+      "spokenText": "quarenta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-49",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-49",
+      "spokenText": "quarenta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-50",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-50",
+      "spokenText": "cinquenta",
+      "trim": true
+    },
+    {
+      "id": "number-51",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-51",
+      "spokenText": "cinquenta e um",
+      "trim": true
+    },
+    {
+      "id": "number-52",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-52",
+      "spokenText": "cinquenta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-53",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-53",
+      "spokenText": "cinquenta e três",
+      "trim": true
+    },
+    {
+      "id": "number-54",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-54",
+      "spokenText": "cinquenta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-55",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-55",
+      "spokenText": "cinquenta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-56",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-56",
+      "spokenText": "cinquenta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-57",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-57",
+      "spokenText": "cinquenta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-58",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-58",
+      "spokenText": "cinquenta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-59",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-59",
+      "spokenText": "cinquenta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-60",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-60",
+      "spokenText": "sessenta",
+      "trim": true
+    },
+    {
+      "id": "number-61",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-61",
+      "spokenText": "sessenta e um",
+      "trim": true
+    },
+    {
+      "id": "number-62",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-62",
+      "spokenText": "sessenta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-63",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-63",
+      "spokenText": "sessenta e três",
+      "trim": true
+    },
+    {
+      "id": "number-64",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-64",
+      "spokenText": "sessenta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-65",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-65",
+      "spokenText": "sessenta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-66",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-66",
+      "spokenText": "sessenta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-67",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-67",
+      "spokenText": "sessenta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-68",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-68",
+      "spokenText": "sessenta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-69",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-69",
+      "spokenText": "sessenta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-70",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-70",
+      "spokenText": "setenta",
+      "trim": true
+    },
+    {
+      "id": "number-71",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-71",
+      "spokenText": "setenta e um",
+      "trim": true
+    },
+    {
+      "id": "number-72",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-72",
+      "spokenText": "setenta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-73",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-73",
+      "spokenText": "setenta e três",
+      "trim": true
+    },
+    {
+      "id": "number-74",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-74",
+      "spokenText": "setenta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-75",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-75",
+      "spokenText": "setenta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-76",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-76",
+      "spokenText": "setenta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-77",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-77",
+      "spokenText": "setenta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-78",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-78",
+      "spokenText": "setenta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-79",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-79",
+      "spokenText": "setenta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-80",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-80",
+      "spokenText": "oitenta",
+      "trim": true
+    },
+    {
+      "id": "number-81",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-81",
+      "spokenText": "oitenta e um",
+      "trim": true
+    },
+    {
+      "id": "number-82",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-82",
+      "spokenText": "oitenta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-83",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-83",
+      "spokenText": "oitenta e três",
+      "trim": true
+    },
+    {
+      "id": "number-84",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-84",
+      "spokenText": "oitenta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-85",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-85",
+      "spokenText": "oitenta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-86",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-86",
+      "spokenText": "oitenta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-87",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-87",
+      "spokenText": "oitenta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-88",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-88",
+      "spokenText": "oitenta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-89",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-89",
+      "spokenText": "oitenta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-90",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-90",
+      "spokenText": "noventa",
+      "trim": true
+    },
+    {
+      "id": "number-91",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-91",
+      "spokenText": "noventa e um",
+      "trim": true
+    },
+    {
+      "id": "number-92",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-92",
+      "spokenText": "noventa e dois",
+      "trim": true
+    },
+    {
+      "id": "number-93",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-93",
+      "spokenText": "noventa e três",
+      "trim": true
+    },
+    {
+      "id": "number-94",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-94",
+      "spokenText": "noventa e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-95",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-95",
+      "spokenText": "noventa e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-96",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-96",
+      "spokenText": "noventa e seis",
+      "trim": true
+    },
+    {
+      "id": "number-97",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-97",
+      "spokenText": "noventa e sete",
+      "trim": true
+    },
+    {
+      "id": "number-98",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-98",
+      "spokenText": "noventa e oito",
+      "trim": true
+    },
+    {
+      "id": "number-99",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-99",
+      "spokenText": "noventa e nove",
+      "trim": true
+    },
+    {
+      "id": "number-100",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-100",
+      "spokenText": "cem",
+      "trim": true
+    },
+    {
+      "id": "number-101",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-101",
+      "spokenText": "cento e um",
+      "trim": true
+    },
+    {
+      "id": "number-102",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-102",
+      "spokenText": "cento e dois",
+      "trim": true
+    },
+    {
+      "id": "number-103",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-103",
+      "spokenText": "cento e três",
+      "trim": true
+    },
+    {
+      "id": "number-104",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-104",
+      "spokenText": "cento e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-105",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-105",
+      "spokenText": "cento e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-106",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-106",
+      "spokenText": "cento e seis",
+      "trim": true
+    },
+    {
+      "id": "number-107",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-107",
+      "spokenText": "cento e sete",
+      "trim": true
+    },
+    {
+      "id": "number-108",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-108",
+      "spokenText": "cento e oito",
+      "trim": true
+    },
+    {
+      "id": "number-109",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-109",
+      "spokenText": "cento e nove",
+      "trim": true
+    },
+    {
+      "id": "number-110",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-110",
+      "spokenText": "cento e dez",
+      "trim": true
+    },
+    {
+      "id": "number-111",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-111",
+      "spokenText": "cento e onze",
+      "trim": true
+    },
+    {
+      "id": "number-112",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-112",
+      "spokenText": "cento e doze",
+      "trim": true
+    },
+    {
+      "id": "number-113",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-113",
+      "spokenText": "cento e treze",
+      "trim": true
+    },
+    {
+      "id": "number-114",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-114",
+      "spokenText": "cento e catorze",
+      "trim": true
+    },
+    {
+      "id": "number-115",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-115",
+      "spokenText": "cento e quinze",
+      "trim": true
+    },
+    {
+      "id": "number-116",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-116",
+      "spokenText": "cento e dezesseis",
+      "trim": true
+    },
+    {
+      "id": "number-117",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-117",
+      "spokenText": "cento e dezessete",
+      "trim": true
+    },
+    {
+      "id": "number-118",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-118",
+      "spokenText": "cento e dezoito",
+      "trim": true
+    },
+    {
+      "id": "number-119",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-119",
+      "spokenText": "cento e dezenove",
+      "trim": true
+    },
+    {
+      "id": "number-120",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-120",
+      "spokenText": "cento e vinte",
+      "trim": true
+    },
+    {
+      "id": "number-121",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-121",
+      "spokenText": "cento e vinte e um",
+      "trim": true
+    },
+    {
+      "id": "number-122",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-122",
+      "spokenText": "cento e vinte e dois",
+      "trim": true
+    },
+    {
+      "id": "number-123",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-123",
+      "spokenText": "cento e vinte e três",
+      "trim": true
+    },
+    {
+      "id": "number-124",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-124",
+      "spokenText": "cento e vinte e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-125",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-125",
+      "spokenText": "cento e vinte e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-126",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-126",
+      "spokenText": "cento e vinte e seis",
+      "trim": true
+    },
+    {
+      "id": "number-127",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-127",
+      "spokenText": "cento e vinte e sete",
+      "trim": true
+    },
+    {
+      "id": "number-128",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-128",
+      "spokenText": "cento e vinte e oito",
+      "trim": true
+    },
+    {
+      "id": "number-129",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-129",
+      "spokenText": "cento e vinte e nove",
+      "trim": true
+    },
+    {
+      "id": "number-130",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-130",
+      "spokenText": "cento e trinta",
+      "trim": true
+    },
+    {
+      "id": "number-131",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-131",
+      "spokenText": "cento e trinta e um",
+      "trim": true
+    },
+    {
+      "id": "number-132",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-132",
+      "spokenText": "cento e trinta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-133",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-133",
+      "spokenText": "cento e trinta e três",
+      "trim": true
+    },
+    {
+      "id": "number-134",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-134",
+      "spokenText": "cento e trinta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-135",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-135",
+      "spokenText": "cento e trinta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-136",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-136",
+      "spokenText": "cento e trinta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-137",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-137",
+      "spokenText": "cento e trinta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-138",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-138",
+      "spokenText": "cento e trinta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-139",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-139",
+      "spokenText": "cento e trinta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-140",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-140",
+      "spokenText": "cento e quarenta",
+      "trim": true
+    },
+    {
+      "id": "number-141",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-141",
+      "spokenText": "cento e quarenta e um",
+      "trim": true
+    },
+    {
+      "id": "number-142",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-142",
+      "spokenText": "cento e quarenta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-143",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-143",
+      "spokenText": "cento e quarenta e três",
+      "trim": true
+    },
+    {
+      "id": "number-144",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-144",
+      "spokenText": "cento e quarenta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-145",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-145",
+      "spokenText": "cento e quarenta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-146",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-146",
+      "spokenText": "cento e quarenta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-147",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-147",
+      "spokenText": "cento e quarenta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-148",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-148",
+      "spokenText": "cento e quarenta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-149",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-149",
+      "spokenText": "cento e quarenta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-150",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-150",
+      "spokenText": "cento e cinquenta",
+      "trim": true
+    },
+    {
+      "id": "number-151",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-151",
+      "spokenText": "cento e cinquenta e um",
+      "trim": true
+    },
+    {
+      "id": "number-152",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-152",
+      "spokenText": "cento e cinquenta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-153",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-153",
+      "spokenText": "cento e cinquenta e três",
+      "trim": true
+    },
+    {
+      "id": "number-154",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-154",
+      "spokenText": "cento e cinquenta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-155",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-155",
+      "spokenText": "cento e cinquenta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-156",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-156",
+      "spokenText": "cento e cinquenta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-157",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-157",
+      "spokenText": "cento e cinquenta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-158",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-158",
+      "spokenText": "cento e cinquenta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-159",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-159",
+      "spokenText": "cento e cinquenta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-160",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-160",
+      "spokenText": "cento e sessenta",
+      "trim": true
+    },
+    {
+      "id": "number-161",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-161",
+      "spokenText": "cento e sessenta e um",
+      "trim": true
+    },
+    {
+      "id": "number-162",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-162",
+      "spokenText": "cento e sessenta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-163",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-163",
+      "spokenText": "cento e sessenta e três",
+      "trim": true
+    },
+    {
+      "id": "number-164",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-164",
+      "spokenText": "cento e sessenta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-165",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-165",
+      "spokenText": "cento e sessenta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-166",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-166",
+      "spokenText": "cento e sessenta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-167",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-167",
+      "spokenText": "cento e sessenta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-168",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-168",
+      "spokenText": "cento e sessenta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-169",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-169",
+      "spokenText": "cento e sessenta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-170",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-170",
+      "spokenText": "cento e setenta",
+      "trim": true
+    },
+    {
+      "id": "number-171",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-171",
+      "spokenText": "cento e setenta e um",
+      "trim": true
+    },
+    {
+      "id": "number-172",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-172",
+      "spokenText": "cento e setenta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-173",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-173",
+      "spokenText": "cento e setenta e três",
+      "trim": true
+    },
+    {
+      "id": "number-174",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-174",
+      "spokenText": "cento e setenta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-175",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-175",
+      "spokenText": "cento e setenta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-176",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-176",
+      "spokenText": "cento e setenta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-177",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-177",
+      "spokenText": "cento e setenta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-178",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-178",
+      "spokenText": "cento e setenta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-179",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-179",
+      "spokenText": "cento e setenta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-180",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-180",
+      "spokenText": "cento e oitenta",
+      "trim": true
+    },
+    {
+      "id": "number-181",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-181",
+      "spokenText": "cento e oitenta e um",
+      "trim": true
+    },
+    {
+      "id": "number-182",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-182",
+      "spokenText": "cento e oitenta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-183",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-183",
+      "spokenText": "cento e oitenta e três",
+      "trim": true
+    },
+    {
+      "id": "number-184",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-184",
+      "spokenText": "cento e oitenta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-185",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-185",
+      "spokenText": "cento e oitenta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-186",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-186",
+      "spokenText": "cento e oitenta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-187",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-187",
+      "spokenText": "cento e oitenta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-188",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-188",
+      "spokenText": "cento e oitenta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-189",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-189",
+      "spokenText": "cento e oitenta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-190",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-190",
+      "spokenText": "cento e noventa",
+      "trim": true
+    },
+    {
+      "id": "number-191",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-191",
+      "spokenText": "cento e noventa e um",
+      "trim": true
+    },
+    {
+      "id": "number-192",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-192",
+      "spokenText": "cento e noventa e dois",
+      "trim": true
+    },
+    {
+      "id": "number-193",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-193",
+      "spokenText": "cento e noventa e três",
+      "trim": true
+    },
+    {
+      "id": "number-194",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-194",
+      "spokenText": "cento e noventa e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-195",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-195",
+      "spokenText": "cento e noventa e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-196",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-196",
+      "spokenText": "cento e noventa e seis",
+      "trim": true
+    },
+    {
+      "id": "number-197",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-197",
+      "spokenText": "cento e noventa e sete",
+      "trim": true
+    },
+    {
+      "id": "number-198",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-198",
+      "spokenText": "cento e noventa e oito",
+      "trim": true
+    },
+    {
+      "id": "number-199",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-199",
+      "spokenText": "cento e noventa e nove",
+      "trim": true
+    },
+    {
+      "id": "number-200",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-200",
+      "spokenText": "duzentos",
+      "trim": true
+    },
+    {
+      "id": "number-201",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-201",
+      "spokenText": "duzentos e um",
+      "trim": true
+    },
+    {
+      "id": "number-202",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-202",
+      "spokenText": "duzentos e dois",
+      "trim": true
+    },
+    {
+      "id": "number-203",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-203",
+      "spokenText": "duzentos e três",
+      "trim": true
+    },
+    {
+      "id": "number-204",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-204",
+      "spokenText": "duzentos e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-205",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-205",
+      "spokenText": "duzentos e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-206",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-206",
+      "spokenText": "duzentos e seis",
+      "trim": true
+    },
+    {
+      "id": "number-207",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-207",
+      "spokenText": "duzentos e sete",
+      "trim": true
+    },
+    {
+      "id": "number-208",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-208",
+      "spokenText": "duzentos e oito",
+      "trim": true
+    },
+    {
+      "id": "number-209",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-209",
+      "spokenText": "duzentos e nove",
+      "trim": true
+    },
+    {
+      "id": "number-210",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-210",
+      "spokenText": "duzentos e dez",
+      "trim": true
+    },
+    {
+      "id": "number-211",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-211",
+      "spokenText": "duzentos e onze",
+      "trim": true
+    },
+    {
+      "id": "number-212",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-212",
+      "spokenText": "duzentos e doze",
+      "trim": true
+    },
+    {
+      "id": "number-213",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-213",
+      "spokenText": "duzentos e treze",
+      "trim": true
+    },
+    {
+      "id": "number-214",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-214",
+      "spokenText": "duzentos e catorze",
+      "trim": true
+    },
+    {
+      "id": "number-215",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-215",
+      "spokenText": "duzentos e quinze",
+      "trim": true
+    },
+    {
+      "id": "number-216",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-216",
+      "spokenText": "duzentos e dezesseis",
+      "trim": true
+    },
+    {
+      "id": "number-217",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-217",
+      "spokenText": "duzentos e dezessete",
+      "trim": true
+    },
+    {
+      "id": "number-218",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-218",
+      "spokenText": "duzentos e dezoito",
+      "trim": true
+    },
+    {
+      "id": "number-219",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-219",
+      "spokenText": "duzentos e dezenove",
+      "trim": true
+    },
+    {
+      "id": "number-220",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-220",
+      "spokenText": "duzentos e vinte",
+      "trim": true
+    },
+    {
+      "id": "number-221",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-221",
+      "spokenText": "duzentos e vinte e um",
+      "trim": true
+    },
+    {
+      "id": "number-222",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-222",
+      "spokenText": "duzentos e vinte e dois",
+      "trim": true
+    },
+    {
+      "id": "number-223",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-223",
+      "spokenText": "duzentos e vinte e três",
+      "trim": true
+    },
+    {
+      "id": "number-224",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-224",
+      "spokenText": "duzentos e vinte e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-225",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-225",
+      "spokenText": "duzentos e vinte e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-226",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-226",
+      "spokenText": "duzentos e vinte e seis",
+      "trim": true
+    },
+    {
+      "id": "number-227",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-227",
+      "spokenText": "duzentos e vinte e sete",
+      "trim": true
+    },
+    {
+      "id": "number-228",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-228",
+      "spokenText": "duzentos e vinte e oito",
+      "trim": true
+    },
+    {
+      "id": "number-229",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-229",
+      "spokenText": "duzentos e vinte e nove",
+      "trim": true
+    },
+    {
+      "id": "number-230",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-230",
+      "spokenText": "duzentos e trinta",
+      "trim": true
+    },
+    {
+      "id": "number-231",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-231",
+      "spokenText": "duzentos e trinta e um",
+      "trim": true
+    },
+    {
+      "id": "number-232",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-232",
+      "spokenText": "duzentos e trinta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-233",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-233",
+      "spokenText": "duzentos e trinta e três",
+      "trim": true
+    },
+    {
+      "id": "number-234",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-234",
+      "spokenText": "duzentos e trinta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-235",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-235",
+      "spokenText": "duzentos e trinta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-236",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-236",
+      "spokenText": "duzentos e trinta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-237",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-237",
+      "spokenText": "duzentos e trinta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-238",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-238",
+      "spokenText": "duzentos e trinta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-239",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-239",
+      "spokenText": "duzentos e trinta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-240",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-240",
+      "spokenText": "duzentos e quarenta",
+      "trim": true
+    },
+    {
+      "id": "number-241",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-241",
+      "spokenText": "duzentos e quarenta e um",
+      "trim": true
+    },
+    {
+      "id": "number-242",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-242",
+      "spokenText": "duzentos e quarenta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-243",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-243",
+      "spokenText": "duzentos e quarenta e três",
+      "trim": true
+    },
+    {
+      "id": "number-244",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-244",
+      "spokenText": "duzentos e quarenta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-245",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-245",
+      "spokenText": "duzentos e quarenta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-246",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-246",
+      "spokenText": "duzentos e quarenta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-247",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-247",
+      "spokenText": "duzentos e quarenta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-248",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-248",
+      "spokenText": "duzentos e quarenta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-249",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-249",
+      "spokenText": "duzentos e quarenta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-250",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-250",
+      "spokenText": "duzentos e cinquenta",
+      "trim": true
+    },
+    {
+      "id": "number-251",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-251",
+      "spokenText": "duzentos e cinquenta e um",
+      "trim": true
+    },
+    {
+      "id": "number-252",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-252",
+      "spokenText": "duzentos e cinquenta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-253",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-253",
+      "spokenText": "duzentos e cinquenta e três",
+      "trim": true
+    },
+    {
+      "id": "number-254",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-254",
+      "spokenText": "duzentos e cinquenta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-255",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-255",
+      "spokenText": "duzentos e cinquenta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-256",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-256",
+      "spokenText": "duzentos e cinquenta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-257",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-257",
+      "spokenText": "duzentos e cinquenta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-258",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-258",
+      "spokenText": "duzentos e cinquenta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-259",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-259",
+      "spokenText": "duzentos e cinquenta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-260",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-260",
+      "spokenText": "duzentos e sessenta",
+      "trim": true
+    },
+    {
+      "id": "number-261",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-261",
+      "spokenText": "duzentos e sessenta e um",
+      "trim": true
+    },
+    {
+      "id": "number-262",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-262",
+      "spokenText": "duzentos e sessenta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-263",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-263",
+      "spokenText": "duzentos e sessenta e três",
+      "trim": true
+    },
+    {
+      "id": "number-264",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-264",
+      "spokenText": "duzentos e sessenta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-265",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-265",
+      "spokenText": "duzentos e sessenta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-266",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-266",
+      "spokenText": "duzentos e sessenta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-267",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-267",
+      "spokenText": "duzentos e sessenta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-268",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-268",
+      "spokenText": "duzentos e sessenta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-269",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-269",
+      "spokenText": "duzentos e sessenta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-270",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-270",
+      "spokenText": "duzentos e setenta",
+      "trim": true
+    },
+    {
+      "id": "number-271",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-271",
+      "spokenText": "duzentos e setenta e um",
+      "trim": true
+    },
+    {
+      "id": "number-272",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-272",
+      "spokenText": "duzentos e setenta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-273",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-273",
+      "spokenText": "duzentos e setenta e três",
+      "trim": true
+    },
+    {
+      "id": "number-274",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-274",
+      "spokenText": "duzentos e setenta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-275",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-275",
+      "spokenText": "duzentos e setenta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-276",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-276",
+      "spokenText": "duzentos e setenta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-277",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-277",
+      "spokenText": "duzentos e setenta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-278",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-278",
+      "spokenText": "duzentos e setenta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-279",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-279",
+      "spokenText": "duzentos e setenta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-280",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-280",
+      "spokenText": "duzentos e oitenta",
+      "trim": true
+    },
+    {
+      "id": "number-281",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-281",
+      "spokenText": "duzentos e oitenta e um",
+      "trim": true
+    },
+    {
+      "id": "number-282",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-282",
+      "spokenText": "duzentos e oitenta e dois",
+      "trim": true
+    },
+    {
+      "id": "number-283",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-283",
+      "spokenText": "duzentos e oitenta e três",
+      "trim": true
+    },
+    {
+      "id": "number-284",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-284",
+      "spokenText": "duzentos e oitenta e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-285",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-285",
+      "spokenText": "duzentos e oitenta e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-286",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-286",
+      "spokenText": "duzentos e oitenta e seis",
+      "trim": true
+    },
+    {
+      "id": "number-287",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-287",
+      "spokenText": "duzentos e oitenta e sete",
+      "trim": true
+    },
+    {
+      "id": "number-288",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-288",
+      "spokenText": "duzentos e oitenta e oito",
+      "trim": true
+    },
+    {
+      "id": "number-289",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-289",
+      "spokenText": "duzentos e oitenta e nove",
+      "trim": true
+    },
+    {
+      "id": "number-290",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-290",
+      "spokenText": "duzentos e noventa",
+      "trim": true
+    },
+    {
+      "id": "number-291",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-291",
+      "spokenText": "duzentos e noventa e um",
+      "trim": true
+    },
+    {
+      "id": "number-292",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-292",
+      "spokenText": "duzentos e noventa e dois",
+      "trim": true
+    },
+    {
+      "id": "number-293",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-293",
+      "spokenText": "duzentos e noventa e três",
+      "trim": true
+    },
+    {
+      "id": "number-294",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-294",
+      "spokenText": "duzentos e noventa e quatro",
+      "trim": true
+    },
+    {
+      "id": "number-295",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-295",
+      "spokenText": "duzentos e noventa e cinco",
+      "trim": true
+    },
+    {
+      "id": "number-296",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-296",
+      "spokenText": "duzentos e noventa e seis",
+      "trim": true
+    },
+    {
+      "id": "number-297",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-297",
+      "spokenText": "duzentos e noventa e sete",
+      "trim": true
+    },
+    {
+      "id": "number-298",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-298",
+      "spokenText": "duzentos e noventa e oito",
+      "trim": true
+    },
+    {
+      "id": "number-299",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-299",
+      "spokenText": "duzentos e noventa e nove",
+      "trim": true
+    },
+    {
+      "id": "number-300",
+      "profile": "shared",
+      "voice": "pt_BR-cadu-medium",
+      "text": "@number-300",
+      "spokenText": "trezentos",
+      "trim": true
+    }
+  ]
+}

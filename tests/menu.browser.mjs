@@ -64,7 +64,7 @@ try {
 	await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
 	await evaluate("document.querySelector('#patient-select').value = 'bruno-large-cuff'; document.querySelector('#start-button').click(); document.querySelector('#start-button').click()");
 	await waitFor("!document.querySelector('.session-bar').hidden && !document.querySelector('#restart-button').disabled");
-	assert.equal(await evaluate("testApp.getSimulationSnapshot().config.patient.name"), "Bruno Exemplo");
+	assert.equal(await evaluate("testApp.getSimulationSnapshot().config.patient.name"), "Bruno");
 	assert.equal(await evaluate("document.activeElement.id"), "session-title");
 	assert.equal(await evaluate("testApp._scene.metadata.clinicalRoom.units"), "meters");
 	assert.equal(await evaluate("!!testApp._scene.getMeshByName('patient-forearm-esquerdo') && !!testApp._scene.getMeshByName('patient-forearm-direito')"), true);
@@ -120,7 +120,7 @@ try {
 	assert.equal(await evaluate("testApp.getSimulationSnapshot().attempts.length"), 1);
 	await evaluate("document.querySelector('#restart-button').click()");
 	await waitFor("!document.querySelector('#restart-button').disabled");
-	assert.equal(await evaluate("testApp.getSimulationSnapshot().config.patient.name"), "Bruno Exemplo");
+	assert.equal(await evaluate("testApp.getSimulationSnapshot().config.patient.name"), "Bruno");
 	assert.equal(await evaluate("testApp.getSimulationSnapshot().attempts.length"), 0);
 	assert.equal(await evaluate("testApp.getSimulationSnapshot().currentStepId"), "initial-hand-hygiene");
 	assert.equal(await evaluate("originalScene.isDisposed && testApp._scene !== originalScene"), true);
@@ -134,7 +134,7 @@ try {
 	await evaluate("document.querySelector('#patient-select').value = 'diego-persistent'; document.querySelector('#start-button').click()");
 	await waitFor("!document.querySelector('.session-bar').hidden && !document.querySelector('#restart-button').disabled");
 	assert.equal(await evaluate("testApp.getSimulationSnapshot().config.persistentSounds"), true);
-	assert.equal(await evaluate("testApp.getSimulationSnapshot().config.patient.name"), "Diego Exemplo");
+	assert.equal(await evaluate("testApp.getSimulationSnapshot().config.patient.name"), "Diego");
 	await send("Emulation.setDeviceMetricsOverride", { width: 800, height: 600, deviceScaleFactor: 1, mobile: false });
 	await waitFor("Math.abs(testApp._engine.getRenderWidth() - 800) < 2");
 	await evaluate("document.querySelector('#back-button').click()");

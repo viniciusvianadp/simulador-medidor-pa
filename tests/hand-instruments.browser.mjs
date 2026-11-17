@@ -56,6 +56,7 @@ try {
 	await run(async () => { window.testApp = (await import(document.querySelector('script[src*="/src/main.ts"]').src)).app; });
 	await evaluate("document.querySelector('#start-button').click()");
 	await waitFor("testApp.getSimulationSnapshot() !== null && !testApp._loading");
+	await run(() => testApp.resetSession("evaluation"));
 	assert.equal(await run(() => {
 		const scene = testApp._scene;scene.render();
 		const patient = scene.getTransformNodeByName("patient-root");

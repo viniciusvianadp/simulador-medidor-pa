@@ -51,7 +51,7 @@ export interface StepDefinition {
 export type GuidanceMode = "tutorial" | "evaluation";
 
 export interface ScenarioConfig {
-	patient: { name: string; dateOfBirth: string; armCircumferenceCm: number };
+	patient: { name: string; dateOfBirth: string; armCircumferenceCm: number; voiceProfile?: "female" | "male" };
 	pressure: { systolic: number; diastolic: number };
 	persistentSounds: boolean;
 	arm: "esquerdo" | "direito";

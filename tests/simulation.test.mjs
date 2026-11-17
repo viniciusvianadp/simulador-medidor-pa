@@ -88,7 +88,7 @@ for (const patientCase of patientCases) {
 		test(`${patientCase.id}: rejects Ana's identity and pressure instead of accepting default answers`, () => {
 			const context = setup(patientCase.config);
 			until(context, "name-confirmed");
-			assert.equal(context.controller.dispatch({ type: "name-confirmed", target: "patient", value: "Ana Exemplo" }).accepted, false);
+			assert.equal(context.controller.dispatch({ type: "name-confirmed", target: "patient", value: "Ana" }).accepted, false);
 			until(context, "birth-date-confirmed");
 			assert.equal(context.controller.dispatch({ type: "birth-date-confirmed", target: "patient", value: "1980-05-12" }).accepted, false);
 			until(context, "first-sound-recorded");
@@ -451,5 +451,32 @@ for (const paused of [false, true]) {
 		context.clock.advance(1000);
 		context.controller.advancePressure();
 		assert.equal(context.controller.getCuffPressure(), 138);
+	});
+}
+
+for (const { config } of patientCases) {
+	test(`${config.patient.name}: tutorial waits for ordered spoken topics and preserves setup`, () => {
+		const clock = new MockClock();
+		const controller = new SimulationController(config, clock.now, true, true);
+		const topics = ["identify-patient", "check-readiness", "explain-and-rest", "inform-patient"];
+		const completed = [];
+		assert.equal(controller.completeSpokenDialogue("identify-patient"), false);
+		for (let count = 0; !controller.getSnapshot().completed; count++) {
+			assert.ok(count < 200);
+			const id = controller.getSnapshot().currentStepId;
+			if (topics.includes(id)) {
+				assert.equal(controller.completeSpokenDialogue(topics[(topics.indexOf(id) + 1) % 4]), false);
+				assert.equal(controller.getSnapshot().currentStepId, id);
+				if (id === "explain-and-rest") clock.advance(300000);
+				assert.equal(controller.completeSpokenDialogue(id), true);
+				assert.equal(controller.completeSpokenDialogue(id), false);
+				completed.push(id);
+			} else assert.equal(controller.dispatch(nextMockEvent(controller, clock)).accepted, true);
+		}
+		assert.deepEqual(completed, topics);
+		assert.equal(buildDebrief(controller.getSnapshot()).communicationScore, 100);
+		assert.equal(controller.getSnapshot().steps["fit-cuff"]?.status ?? controller.getSnapshot().steps[auscultatoryScenario[11].id].status, "completed");
+		controller.restart();
+		assert.equal(controller.completeSpokenDialogue("inform-patient"), false);
 	});
 }

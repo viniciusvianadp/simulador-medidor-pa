@@ -525,3 +525,14 @@ select { width: 100%; padding: 14px 16px; border: 1px solid #bdcbc0; background:
 		padding: 16px;
 	}
 }
+
+/* The scene slate shows dialogue captions; preserve one accessible DOM transcript. */
+.step-guidance-hud.spoken-dialogue-hud {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+}

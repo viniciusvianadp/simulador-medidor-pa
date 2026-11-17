@@ -194,7 +194,7 @@ export class App {
 		this._guidanceMode = mode;
 		try {
 			this._simulatedOffsetMs = 0;
-			const simulation = new SimulationController(config, () => this.getSimulatedTime(), true);
+			const simulation = new SimulationController(config, () => this.getSimulatedTime(), true, mode === "tutorial");
 			if (!this._engine) {
 				this._engine = new Engine(this._canvas, true, {
 					stencil: true, antialias: true, audioEngine: true,
@@ -241,6 +241,10 @@ export class App {
 	 * Restarts the session in place, keeping the loaded scene so an immersive
 	 * session continues. Used by the restart panel on the wall.
 	 */
+	public completeSpokenDialogue(topic: "identify-patient" | "check-readiness" | "explain-and-rest" | "inform-patient"): boolean {
+		return this._simulation?.completeSpokenDialogue(topic) ?? false;
+	}
+
 	public resetSession(mode: GuidanceMode = this._guidanceMode): void {
 		if (this._loading || !this._simulation || !this._scene) return;
 		const config = this._simulation.getSnapshot().config;
@@ -253,7 +257,7 @@ export class App {
 			item.node.rotation.copyFrom(item.rotation);
 			item.node.setEnabled(item.enabled);
 		}
-		this._simulation = new SimulationController(config, () => this.getSimulatedTime(), true);
+		this._simulation = new SimulationController(config, () => this.getSimulatedTime(), true, mode === "tutorial");
 		this._interactionManager = new InteractionManager(this._scene, this);
 		this._menu?.showActiveSession(config.patient.name, mode);
 	}
@@ -497,7 +501,7 @@ export class App {
 			"sanitizer-root",
 			0.0004,
 			Vector3.Zero(),
-			0,
+			clinicalLayout.sanitizerRotationY,
 			"sanitizer"
 		);
 

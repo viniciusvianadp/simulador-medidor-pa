@@ -25,7 +25,7 @@ export class SimulationController {
 	private _deflationPausedAt: number | null = null;
 	private _deflationStartingPressure = 0;
 
-	public constructor(config: ScenarioConfig = defaultConfig, clock: () => number = () => performance.now(), decoupledFlow = false) {
+	public constructor(config: ScenarioConfig = defaultConfig, clock: () => number = () => performance.now(), decoupledFlow = false, private _orderedDialogue = false) {
 		if (!Number.isFinite(config.pressure.systolic) || !Number.isFinite(config.pressure.diastolic)
 			|| config.pressure.systolic <= config.pressure.diastolic || config.pressure.diastolic < parameters.confirmation.minDrop
 			|| eligibleCuffs(config.patient.armCircumferenceCm).length === 0 || !config.patient.name.trim() || !config.patient.dateOfBirth.trim()) {
@@ -167,6 +167,13 @@ export class SimulationController {
 		return { accepted, feedback };
 	}
 
+	public completeSpokenDialogue(topicId: "identify-patient" | "check-readiness" | "explain-and-rest" | "inform-patient"): boolean {
+		if (!this._orderedDialogue || this._state.currentStepId !== topicId) return false;
+		const result = this.dispatchLateralDialogue(topicId);
+		if (result.accepted) this._completeStep(auscultatoryScenario.find(step => step.id === topicId)!.checklistNumber);
+		return result.accepted;
+	}
+
 	public dispatchLateralDialogue(topicId: "identify-patient" | "check-readiness" | "explain-and-rest" | "inform-patient"): { accepted: boolean; feedback: string; dialogueText: string } {
 		const state = this._state;
 		const config = state.config;
@@ -178,7 +185,7 @@ export class SimulationController {
 			state.observations["identify-patient:birth-date-confirmed"] = config.patient.dateOfBirth;
 			state.steps["identify-patient"].status = "completed";
 
-			const isIdeal = ["initial-hand-hygiene", "disinfect-stethoscope", "prepare-materials", "hand-hygiene-before-identification", "hand-hygiene-before-measurement"].includes(currentPhysicalStep ?? "");
+			const isIdeal = ["initial-hand-hygiene", "disinfect-stethoscope", "prepare-materials", "hand-hygiene-before-identification", "hand-hygiene-before-measurement", "identify-patient"].includes(currentPhysicalStep ?? "");
 			const timing: CommunicationTiming = isIdeal ? "ideal" : "late";
 			const feedback = isIdeal
 				? "Identificação confirmada no momento ideal (antes dos procedimentos no paciente)."
@@ -380,7 +387,7 @@ export class SimulationController {
 		let nextIndex = number;
 
 		if (this._decoupledFlow) {
-			if (number === 4) {
+			if (number === 4 && !this._orderedDialogue) {
 				// From step 4 (hand-hygiene-before-identification), advance directly to step 8 (hand-hygiene-before-measurement)
 				nextIndex = 7;
 			} else if (number === 8) {
@@ -392,9 +399,9 @@ export class SimulationController {
 				nextIndex = 21; // step 22 (persistent-sounds)
 			} else if (number === 21) {
 				state.steps[auscultatoryScenario[21].id] = { status: "skipped", reason: "Os sons desapareceram antes de zero." };
-				nextIndex = 23; // step 24 (remove-cuff)
+				nextIndex = this._orderedDialogue ? 22 : 23; // communication before cuff removal in tutorial
 			} else if (number === 22) {
-				nextIndex = 23; // step 24 (remove-cuff)
+				nextIndex = this._orderedDialogue ? 22 : 23; // communication before cuff removal in tutorial
 			}
 		} else {
 			if (number === 19 && state.config.persistentSounds) {

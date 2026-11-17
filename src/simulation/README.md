@@ -25,11 +25,11 @@ The cases are engineering fixtures that exercise different inputs; they are not 
 
 | Case ID | Fictional patient | Arm circumference | Pressure (mmHg) | Arm | Purpose |
 | --- | --- | --- | --- | --- | --- |
-| `ana-standard` | Ana Exemplo | 30 cm | 118/66 | Right | Adult cuff, ordinary path |
-| `bruno-large-cuff` | Bruno Exemplo | 40 cm | 158/94 | Right | Large adult cuff, higher pressure values |
-| `clara-small-cuff` | Clara Exemplo | 24 cm | 96/58 | Right | Small adult cuff, lower pressure values |
-| `diego-persistent` | Diego Exemplo | 33 cm | 126/72/0 | Right | Persistent sounds; 72 is the muffling observation |
-| `elisa-infant-cuff` | Elisa Exemplo | 21 cm | 110/70 | Right | Infant cuff only; former small-adult overlap removed in 2026 |
+| `ana-standard` | Ana | 30 cm | 118/66 | Right | Adult cuff, ordinary path |
+| `bruno-large-cuff` | Bruno | 40 cm | 158/94 | Right | Large adult cuff, higher pressure values |
+| `clara-small-cuff` | Clara | 24 cm | 96/58 | Right | Small adult cuff, lower pressure values |
+| `diego-persistent` | Diego | 33 cm | 126/72/0 | Right | Persistent sounds; 72 is the muffling observation |
+| `elisa-infant-cuff` | Elisa | 21 cm | 110/70 | Right | Infant cuff only; former small-adult overlap removed in 2026 |
 
 The current room scene poses only the right arm at heart level, so all available single-arm fixtures use that same arm. Left-arm and bilateral cases need matching scene poses before they can be offered.
 

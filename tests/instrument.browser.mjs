@@ -78,6 +78,11 @@ try {
 	await waitFor("testApp.getSimulationSnapshot() !== null && !testApp._loading");
 	await run(() => {
 		for (let index = 0; index < 80 && testApp.getSimulationSnapshot().currentStepId !== "inflate-for-auscultation"; index++) {
+			// Privileged fixture: dialogue playback is covered by dialogue.browser.mjs.
+			if (["identify-patient", "check-readiness", "explain-and-rest", "inform-patient"].includes(testApp.getSimulationSnapshot().currentStepId)) {
+				testApp.completeSpokenDialogue(testApp.getSimulationSnapshot().currentStepId);
+				continue;
+			}
 			if (!testApp.getInteractionManager().executeActiveActionFromScene()) throw new Error("Preparation failed");
 		}
 		testApp.moveToStation("direito");
@@ -143,6 +148,10 @@ try {
 		const clock = { now: () => testApp.getSimulatedTime(), advance: ms => testApp.advanceSimulatedTime(ms) };
 		const manager = testApp.getInteractionManager();
 		for (let index = 0; index < 150 && testApp.getCurrentSimulationAction()?.type !== "cuff-removed"; index++) {
+			if (testApp.getSimulationSnapshot().currentStepId === "inform-patient") {
+				testApp.completeSpokenDialogue("inform-patient");
+				continue;
+			}
 			if (!manager.dispatchAction(nextMockEvent(testApp._simulation, clock))) throw new Error("Measurement fixture failed");
 		}
 		if (testApp.getCurrentSimulationAction()?.type !== "cuff-removed" || !manager.handleMeshInteraction(original)) throw new Error("Cuff removal rejected");
@@ -156,6 +165,11 @@ try {
 			if (!original.isEnabled() || scene.getMeshByName("instrument-bulb") !== bulb || bulb.isDisposed()) throw new Error("In-place reset destroyed the physical instrument");
 			if (scene.meshes.filter(mesh => mesh.name === "instrument-valve").length !== 1) throw new Error("Duplicate instrument controls");
 			for (let index = 0; index < 80 && testApp.getSimulationSnapshot().currentStepId !== "inflate-for-auscultation"; index++) {
+				// Privileged fixture: dialogue playback is covered by dialogue.browser.mjs.
+				if (["identify-patient", "check-readiness", "explain-and-rest", "inform-patient"].includes(testApp.getSimulationSnapshot().currentStepId)) {
+					testApp.completeSpokenDialogue(testApp.getSimulationSnapshot().currentStepId);
+					continue;
+				}
 				if (!testApp.getInteractionManager().executeActiveActionFromScene()) throw new Error("Reset preparation failed");
 			}
 			if (!testApp.getInteractionManager().handleMeshInteraction(bulb) || testApp.getSimulationSnapshot().instruments.cuffPressure !== 10) throw new Error("Reset bulb does not inflate");

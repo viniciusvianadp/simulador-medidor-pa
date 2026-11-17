@@ -44,6 +44,8 @@ export const clinicalLayout = {
 	patientStationOffset: [-0.80, 0, 0] as Vec3,
 	measurementStandOffset: [0.25, -0.13, 0.14] as Vec3,
 	supplyTableCenter: [-0.95, -1.90] as [number, number],
+	// The imported pump points along +X; face the shared station (+0.18 X, +0.40 Z).
+	sanitizerRotationY: -Math.atan2(0.40, 0.18),
 	supplyPositions: {
 		sanitizer: [-1.23, -1.90], stethoscope: [-0.97, -1.90], record: [-0.67, -1.90],
 	} satisfies Record<string, [number, number]>,
@@ -61,6 +63,7 @@ export const clinicalLayout = {
 	},
 
 	soapDispenser: [0.792, 1.272, -2.391] as Vec3,
+	dialogueApproachRadius: 1.6,
 	dialogueTrigger: [-1.84, 1.85, -1.095] as Vec3,
 	/** General XR guidance slate, offset from the wall behind the sanitizer. */
 	xrSlate: [-2.3, 1.85, -0.62] as Vec3,

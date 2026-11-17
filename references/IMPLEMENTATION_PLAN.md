@@ -356,3 +356,7 @@ Applies to office measurements from age 18; values are in mmHg.
 | HA Estágio 3 | ≥180 | e/ou | 110 (comparison sign absent in source) |
 
 **Source clarification required:** the stage-3 diastolic entry visibly prints `110` without a comparator. Preserve this fact; do not silently turn it into an automatic threshold. Confirm this and how mixed systolic/diastolic categories should be presented before implementing classification feedback.
+
+### Tutorial communication revision — 2026-11-17
+
+User-authorized change: tutorial mode now runs steps 5–7 in order after hand hygiene and step 23 after either auscultation branch. A compact learner-facing dialogue slate replaces the tutorial bubble/topic panel. Entering the existing front-of-patient station starts automatic Portuguese professional/patient speech with subtitles; each topic finishes without confirmation clicks. The explanation includes an announced five-minute simulated rest. Browser speech synthesis supplies audio, with timed subtitles when audio is unavailable. Open/evaluation mode preserves optional lateral communication and omission/timing evaluation. This supersedes earlier statements that communication is non-blocking in every mode. See the latest backlog entry for implementation and device validation limits.
