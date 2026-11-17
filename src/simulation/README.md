@@ -104,6 +104,8 @@ The mock pressure configuration requires finite systolic > diastolic values and 
 
 Tests cover both complete paths, all checklist entries, prerequisites and ordering, wrong targets, repeated hygiene, identity/readiness, timer boundaries, cuff overlap/gaps, inflation increments, deflation rate, disappearance confirmation, mandatory exact documentation, reset, and snapshot isolation. Browser rendering and XR hardware are outside this engine-only verification.
 
+The room workflow (`decoupledFlow=true`) is also tested across all five patient cases: pre-established setup, completion with omitted conversation, branch selection, and final readings. Both sound branches have full-session tests with ideally timed lateral conversation and restart. Dedicated fake-clock tests verify continuous deflation at 2 mmHg/s across irregular updates, the zero-pressure floor, pause/resume timing, pressure updates on dispatch, and restart during active or paused deflation. These tests run under `npm test` without a browser or headset.
+
 
 ## 2026 migration scope
 

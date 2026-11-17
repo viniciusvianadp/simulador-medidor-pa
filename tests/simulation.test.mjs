@@ -23,9 +23,9 @@ test("condition types reject missing expectations, unused expectations and unkno
 	execFileSync(process.execPath, ["node_modules/typescript/bin/tsc", "--ignoreConfig", "--target", "ES2022", "--module", "ESNext", "--moduleResolution", "bundler", "--strict", "--skipLibCheck", "--noEmit", "tests/actionConditions.typecheck.ts"], { stdio: "inherit" });
 });
 
-function setup(config = defaultConfig) {
+function setup(config = defaultConfig, decoupledFlow = false) {
 	const clock = new MockClock();
-	return { clock, controller: new SimulationController(config, clock.now) };
+	return { clock, controller: new SimulationController(config, clock.now, decoupledFlow) };
 }
 function until(context, type) {
 	for (let count = 0; context.controller.getCurrentAction()?.type !== type; count++) {
@@ -319,3 +319,137 @@ test("debrief scores communication from omission and timing", () => {
 	assert.deepEqual(report.communication.map(record => record.timing), ["ideal", "ideal", "ideal", "early"]);
 	assert.equal(report.communicationScore, 90);
 });
+
+// The room uses decoupledFlow=true: conversation is optional and setup is supplied.
+for (const patientCase of patientCases) {
+	test(`${patientCase.id}: room workflow completes without blocking on omitted conversation`, () => {
+		const context = setup(patientCase.config, true);
+		until(context, "eye-level-aligned");
+		const prepared = context.controller.getSnapshot();
+		for (const id of ["measure-arm-and-select-cuff", "position-patient", "align-cuff", "fit-cuff"]) {
+			assert.equal(prepared.steps[id].status, "completed", id);
+			assert.equal(prepared.attempts.some(attempt => attempt.stepId === id), false);
+		}
+		assert.equal(prepared.instruments.cuffAttached, true);
+		assert.equal(prepared.instruments.selectedCuff, caseExpectations[patientCase.id].cuff);
+		const session = finish(context);
+		assert.equal(session.completed, true);
+		assert.equal(session.currentStepId, null);
+		assert.equal(session.instruments.cuffPressure, 0);
+		assert.equal(session.instruments.cuffAttached, false);
+		assert.equal(session.steps["persistent-sounds"].status, patientCase.config.persistentSounds ? "completed" : "skipped");
+		for (const id of ["identify-diastolic", "confirm-disappearance"]) {
+			assert.equal(session.steps[id].status, patientCase.config.persistentSounds ? "skipped" : "completed");
+		}
+		const record = session.observations["document-measurement:measurement-documented"];
+		assert.equal(record.systolic, patientCase.config.pressure.systolic);
+		assert.equal(record.diastolic, patientCase.config.pressure.diastolic);
+		assert.equal(record.zero, patientCase.config.persistentSounds ? 0 : undefined);
+		const report = buildDebrief(session);
+		assert.equal(report.physicalScore, 100);
+		assert.equal(report.communicationScore, 0);
+		assert.equal(report.totalScore, 50);
+		assert.equal(report.communication.length, 4);
+		assert.ok(report.communication.every(record => record.status === "omitted"));
+	});
+}
+
+for (const persistentSounds of [false, true]) {
+	test(`room workflow with ideal conversation completes and resets (persistent=${persistentSounds})`, () => {
+		const context = setup({ ...defaultConfig, persistentSounds }, true);
+		const initial = context.controller.getSnapshot();
+		for (const topic of ["identify-patient", "check-readiness", "explain-and-rest"]) {
+			const before = context.controller.getCurrentAction();
+			assert.equal(context.controller.dispatchLateralDialogue(topic).accepted, true);
+			assert.deepEqual(context.controller.getCurrentAction(), before, "Conversation must not advance the physical action");
+		}
+		until(context, "cuff-removed");
+		assert.equal(context.controller.dispatchLateralDialogue("inform-patient").accepted, true);
+		const report = buildDebrief(finish(context));
+		assert.ok(report.communication.every(record => record.timing === "ideal"));
+		assert.equal(report.totalScore, 100);
+		context.controller.restart();
+		assert.deepEqual(context.controller.getSnapshot(), initial);
+		assert.equal(context.controller.isDecoupledFlow(), true);
+		assert.equal(finish(context).completed, true);
+	});
+}
+
+function startDeflation() {
+	const context = setup(defaultConfig, true);
+	until(context, "deflation-started");
+	assert.equal(context.controller.dispatch({ type: "deflation-started", target: "cuff", value: 2 }).accepted, true);
+	assert.equal(context.controller.getCuffPressure(), 140);
+	return context;
+}
+
+test("continuous deflation follows elapsed time across irregular updates and clamps at zero", () => {
+	const { controller, clock } = startDeflation();
+	assert.equal(controller.isDeflationActive(), true);
+	assert.equal(controller.isDeflationPaused(), false);
+	assert.equal(controller.advancePressure(), false);
+	clock.advance(250);
+	assert.equal(controller.advancePressure(), true);
+	assert.equal(controller.getCuffPressure(), 139.5);
+	clock.advance(1750);
+	controller.advancePressure();
+	assert.equal(controller.getCuffPressure(), 136);
+	clock.advance(68000);
+	controller.advancePressure();
+	assert.equal(controller.getCuffPressure(), 0);
+	clock.advance(60000);
+	assert.equal(controller.advancePressure(), false);
+	assert.equal(controller.getCuffPressure(), 0);
+});
+
+test("deflation pause captures elapsed pressure and resume excludes paused time", () => {
+	const { controller, clock } = startDeflation();
+	clock.advance(1250);
+	assert.equal(controller.toggleDeflationPause(), true);
+	assert.equal(controller.getCuffPressure(), 137.5);
+	assert.equal(controller.isDeflationPaused(), true);
+	clock.advance(30000);
+	assert.equal(controller.advancePressure(), false);
+	assert.equal(controller.getCuffPressure(), 137.5);
+	assert.equal(controller.toggleDeflationPause(), true);
+	assert.equal(controller.isDeflationPaused(), false);
+	assert.equal(controller.advancePressure(), false);
+	clock.advance(2000);
+	controller.advancePressure();
+	assert.equal(controller.getCuffPressure(), 133.5);
+	controller.toggleDeflationPause();
+	clock.advance(5000);
+	controller.toggleDeflationPause();
+	clock.advance(500);
+	controller.advancePressure();
+	assert.equal(controller.getCuffPressure(), 132.5);
+});
+
+test("dispatch updates continuous pressure without a render-loop update", () => {
+	const { controller, clock } = startDeflation();
+	clock.advance(11000);
+	assert.equal(controller.dispatch({ type: "first-sound-recorded", target: "gauge", value: 118 }).accepted, true);
+	assert.equal(controller.getCuffPressure(), 118);
+	assert.equal(controller.getSnapshot().observations["identify-systolic:first-sound-recorded"], 118);
+});
+
+for (const paused of [false, true]) {
+	test(`restart clears continuous deflation and allows a fresh cycle (paused=${paused})`, () => {
+		const context = startDeflation();
+		context.clock.advance(1000);
+		context.controller.advancePressure();
+		if (paused) context.controller.toggleDeflationPause();
+		context.controller.restart();
+		context.clock.advance(100000);
+		assert.equal(context.controller.isDeflationActive(), false);
+		assert.equal(context.controller.isDeflationPaused(), false);
+		assert.equal(context.controller.toggleDeflationPause(), false);
+		assert.equal(context.controller.advancePressure(), false);
+		assert.equal(context.controller.getCuffPressure(), 0);
+		until(context, "deflation-started");
+		context.controller.dispatch({ type: "deflation-started", target: "cuff", value: 2 });
+		context.clock.advance(1000);
+		context.controller.advancePressure();
+		assert.equal(context.controller.getCuffPressure(), 138);
+	});
+}

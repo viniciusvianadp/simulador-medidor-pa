@@ -102,11 +102,17 @@ try {
 	await send("Input.dispatchKeyEvent", { type: "keyUp", key: "w", code: "KeyW", windowsVirtualKeyCode: 87 });
 	assert.equal(await evaluate("testApp._scene.activeCamera.position.y"), 1.6, "Looking down must not make walking change eye height");
 	await evaluate("testApp._scene.activeCamera.cameraDirection.setAll(0); testApp._scene.activeCamera.position.copyFrom(startCameraPosition)");
+	// Use the clear central aisle: the current bedside spawn's path crosses
+	// the chair/patient, whose collisions must not be mistaken for the wall.
+	await evaluate("testApp._scene.activeCamera.position.set(0, 1.6, 0.5)");
 	await evaluate("testApp._scene.activeCamera._collideWithWorld(new startCameraPosition.constructor(5, 0, 0))");
 	assert.ok(await evaluate("testApp._scene.activeCamera.position.x > 2 && testApp._scene.activeCamera.position.x < 2.13"), "Camera must stop inside the right wall");
 	await evaluate("testApp._scene.activeCamera.position.copyFrom(startCameraPosition)");
 	// Walking towards the treatment chair must stop before penetrating the chair volume.
-	await evaluate("testApp._scene.activeCamera.position.set(-1.19, 1.6, 0.0)");
+	await evaluate(`(() => {
+		const bounds = testApp._scene.getTransformNodeByName('treatment-chair-root').getHierarchyBoundingVectors(true, mesh => mesh.isEnabled());
+		testApp._scene.activeCamera.position.set((bounds.min.x + bounds.max.x) / 2, 1.6, 0);
+	})()`);
 	await evaluate("testApp._scene.activeCamera._collideWithWorld(new startCameraPosition.constructor(0, 0, -1.5))");
 	assert.ok(await evaluate("testApp._scene.activeCamera.position.z > -0.85"), "Camera must collide with the chair and not walk through it");
 	await evaluate("testApp._scene.activeCamera.position.copyFrom(startCameraPosition)");
